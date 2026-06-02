@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pengingat Pendampingan Pembiayaan – KOPENA</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --surface3: #30363d;
+    --border: #30363d;
+    --accent: #2ea043;
+    --accent2: #388bfd;
+    --accent3: #d29922;
+    --danger: #da3633;
+    --text: #e6edf3;
+    --text2: #8b949e;
+    --text3: #6e7681;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse 80% 40% at 20% 0%, rgba(46,160,67,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 30% at 80% 100%, rgba(56,139,253,0.06) 0%, transparent 60%);
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: rgba(13,17,23,0.92);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-icon {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, var(--accent), #1a6e2e);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .brand-text h1 { font-size: 16px; font-weight: 700; color: var(--text); }
+  .brand-text p { font-size: 11px; color: var(--text2); margin-top: 1px; }
+
+  .header-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; color: var(--accent);
+    background: rgba(46,160,67,0.1);
+    border: 1px solid rgba(46,160,67,0.25);
+    padding: 6px 12px; border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── Layout ── */
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 80px; }
+
+  /* ── Notification banner ── */
+  #notif-banner {
+    display: none;
+    background: rgba(210,153,34,0.12);
+    border: 1px solid rgba(210,153,34,0.3);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: var(--accent3);
+    display: flex; align-items: center; gap: 10px;
+  }
+  #notif-banner button {
+    margin-left: auto; background: var(--accent3); color: #000;
+    border: none; border-radius: 6px; padding: 4px 10px;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+
+  /* ── Section title ── */
+  .section-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1.5px; color: var(--text3);
+    margin-bottom: 12px; margin-top: 28px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-label::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* ── Add form card ── */
+  .form-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .form-full { grid-column: 1 / -1; }
+
+  label {
+    display: block;
+    font-size: 11px; font-weight: 600; color: var(--text2);
+    text-transform: uppercase; letter-spacing: 0.8px;
+    margin-bottom: 6px;
+  }
+  input, textarea, select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    resize: vertical;
+  }
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--accent2);
+    box-shadow: 0 0 0 3px rgba(56,139,253,0.15);
+  }
+  textarea { min-height: 90px; }
+  select option { background: var(--surface2); }
+
+  .form-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 10px 20px; border-radius: var(--radius-sm);
+    font-size: 14px; font-weight: 600; border: none; cursor: pointer;
+    transition: all 0.2s; font-family: inherit;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #3fb950; transform: translateY(-1px); }
+  .btn-secondary { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--surface3); color: var(--text); }
+  .btn-danger { background: rgba(218,54,51,0.15); color: var(--danger); border: 1px solid rgba(218,54,51,0.3); }
+  .btn-danger:hover { background: rgba(218,54,51,0.25); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+  /* ── Stats bar ── */
+  .stats-bar {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    margin-bottom: 4px;
+  }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .stat-icon { font-size: 22px; }
+  .stat-val { font-size: 22px; font-weight: 800; line-height: 1; }
+  .stat-lbl { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .stat-card.green .stat-val { color: var(--accent); }
+  .stat-card.blue .stat-val { color: var(--accent2); }
+  .stat-card.yellow .stat-val { color: var(--accent3); }
+
+  /* ── Filter bar ── */
+  .filter-bar {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 16px; align-items: center;
+  }
+  .filter-bar input[type="text"] {
+    flex: 1; min-width: 180px; max-width: 300px;
+    padding: 8px 14px; font-size: 13px;
+  }
+  .filter-btn {
+    padding: 8px 14px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--text2); transition: all 0.2s; font-family: inherit;
+  }
+  .filter-btn.active { background: var(--accent2); color: #fff; border-color: var(--accent2); }
+
+  /* ── Reminder cards ── */
+  #reminder-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .reminder-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    display: flex; gap: 14px; align-items: flex-start;
+    transition: all 0.2s;
+    position: relative; overflow: hidden;
+    animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .reminder-card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; border-radius: 3px 0 0 3px;
+    background: var(--accent2);
+  }
+  .reminder-card.status-selesai::before { background: var(--accent); }
+  .reminder-card.status-batal::before { background: var(--text3); }
+  .reminder-card.status-mendesak::before { background: var(--danger); }
+  .reminder-card.alarm-firing { animation: pulse 1s ease infinite; }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(210,153,34,0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(210,153,34,0); }
+  }
+
+  .card-left { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 54px; }
+  .card-date-day { font-size: 28px; font-weight: 800; line-height: 1; color: var(--text); }
+  .card-date-mon { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text2); letter-spacing: 1px; }
+  .card-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--accent2);
+    background: rgba(56,139,253,0.1); padding: 2px 6px;
+    border-radius: 4px; white-space: nowrap;
+  }
+
+  .card-body { flex: 1; }
+  .card-header { display: flex; align-items: flex-start; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+  .card-name { font-size: 15px; font-weight: 700; color: var(--text); }
+  .badge {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; padding: 3px 8px; border-radius: 20px;
+  }
+  .badge-menunggu { background: rgba(56,139,253,0.15); color: var(--accent2); }
+  .badge-selesai  { background: rgba(46,160,67,0.15);  color: var(--accent); }
+  .badge-batal    { background: rgba(110,118,129,0.2);  color: var(--text3); }
+  .badge-mendesak { background: rgba(218,54,51,0.15);  color: var(--danger); }
+
+  .card-desc {
+    font-size: 13px; color: var(--text2); margin-bottom: 8px;
+    line-height: 1.55; white-space: pre-wrap;
+  }
+
+  .card-meta {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    font-size: 11px; color: var(--text3);
+  }
+  .card-meta span { display: flex; align-items: center; gap: 4px; }
+
+  .card-actions { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; align-items: flex-start; }
+
+  /* ── Alarm ringing modal ── */
+  #alarm-modal {
+    display: none; position: fixed; inset: 0; z-index: 999;
+    background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
+    align-items: center; justify-content: center;
+  }
+  #alarm-modal.show { display: flex; }
+  .alarm-box {
+    background: var(--surface);
+    border: 1px solid rgba(210,153,34,0.5);
+    border-radius: var(--radius);
+    padding: 32px 28px; max-width: 400px; width: 90%;
+    text-align: center;
+    animation: alarmBounce 0.5s ease;
+    box-shadow: 0 0 60px rgba(210,153,34,0.2);
+  }
+  @keyframes alarmBounce {
+    0%   { transform: scale(0.8); opacity: 0; }
+    60%  { transform: scale(1.05); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .alarm-emoji { font-size: 56px; display: block; margin-bottom: 12px; animation: ring 0.4s ease infinite alternate; }
+  @keyframes ring { from { transform: rotate(-15deg); } to { transform: rotate(15deg); } }
+  .alarm-box h2 { font-size: 18px; font-weight: 800; color: var(--accent3); margin-bottom: 6px; }
+  .alarm-box p  { font-size: 14px; color: var(--text2); margin-bottom: 20px; line-height: 1.5; }
+  .alarm-name { font-weight: 700; color: var(--text); font-size: 16px; }
+
+  /* ── Empty state ── */
+  .empty-state {
+    text-align: center; padding: 48px 24px; color: var(--text3);
+  }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(60px);
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 10px 20px;
+    font-size: 13px; color: var(--text); white-space: nowrap;
+    transition: transform 0.3s; z-index: 500;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 600px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .form-full { grid-column: unset; }
+    .stats-bar { grid-template-columns: 1fr; }
+    .card-actions { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-icon">📋</div>
+    <div class="brand-text">
+      <h1>Pengingat Pendampingan</h1>
+      <p>KOPENA Cabang Limpung – Divisi Pembiayaan</p>
+    </div>
+  </div>
+  <div class="header-time" id="clock">--:--:--</div>
+</header>
+
+<main>
+
+  <!-- Notif Banner -->
+  <div id="notif-banner">
+    ⚠️ Aktifkan notifikasi browser agar alarm bisa berbunyi saat halaman tertutup.
+    <button onclick="requestNotifPermission()">Aktifkan</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="section-label">Ringkasan</div>
+  <div class="stats-bar">
+    <div class="stat-card blue">
+      <div class="stat-icon">📌</div>
+      <div>
+        <div class="stat-val" id="stat-total">0</div>
+        <div class="stat-lbl">Total Janji</div>
+      </div>
+    </div>
+    <div class="stat-card yellow">
+      <div class="stat-icon">⏳</div>
+      <div>
+        <div class="stat-val" id="stat-menunggu">0</div>
+        <div class="stat-lbl">Menunggu</div>
+      </div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-icon">✅</div>
+      <div>
+        <div class="stat-val" id="stat-selesai">0</div>
+        <div class="stat-lbl">Selesai</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Form -->
+  <div class="section-label" style="margin-top:28px;">Tambah Janji Baru</div>
+  <div class="form-card">
+    <div class="form-grid">
+      <div>
+        <label>Nama Anggota / Nasabah</label>
+        <input type="text" id="f-nama" placeholder="Cth: Bapak Ahmad Fauzi">
+      </div>
+      <div>
+        <label>Nomor Rekening / ID</label>
+        <input type="text" id="f-norek" placeholder="Cth: PB-2024-001">
+      </div>
+      <div>
+        <label>Tanggal Janji</label>
+        <input type="date" id="f-tanggal">
+      </div>
+      <div>
+        <label>Jam Janji</label>
+        <input type="time" id="f-jam">
+      </div>
+      <div>
+        <label>Lokasi / Tempat</label>
+        <input type="text" id="f-lokasi" placeholder="Cth: Rumah nasabah, Kantor KOPENA">
+      </div>
+      <div>
+        <label>Status</label>
+        <select id="f-status">
+          <option value="menunggu">⏳ Menunggu</option>
+          <option value="mendesak">🔴 Mendesak</option>
+          <option value="selesai">✅ Selesai</option>
+          <option value="batal">❌ Batal</option>
+        </select>
+      </div>
+      <div class="form-full">
+        <label>Keterangan Janji (tulis detail tujuan, agenda, catatan)</label>
+        <textarea id="f-keterangan" placeholder="Cth: Pendampingan angsuran bulan ke-3, nasabah meminta reschedule. Perlu bawa dokumen akad pembiayaan dan kartu anggota."></textarea>
+      </div>
+      <div>
+        <label>🔔 Ingatkan Sebelum (menit)</label>
+        <select id="f-reminder">
+          <option value="0">Tepat waktu</option>
+          <option value="5">5 menit sebelum</option>
+          <option value="10">10 menit sebelum</option>
+          <option value="15" selected>15 menit sebelum</option>
+          <option value="30">30 menit sebelum</option>
+          <option value="60">1 jam sebelum</option>
+          <option value="1440">1 hari sebelum</option>
+        </select>
+      </div>
+      <div>
+        <label>Petugas Pendamping</label>
+        <input type="text" id="f-petugas" placeholder="Nama petugas yang bertugas">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="clearForm()">🗑 Bersihkan</button>
+      <button class="btn btn-primary" onclick="saveReminder()">💾 Simpan Janji</button>
+    </div>
+  </div>
+
+  <!-- List -->
+  <div class="section-label" style="margin-top:28px;">Daftar Janji Pendampingan</div>
+
+  <div class="filter-bar">
+    <input type="text" id="search-input" placeholder="🔍 Cari nama, keterangan..." oninput="renderList()">
+    <button class="filter-btn active" data-filter="semua" onclick="setFilter(this)">Semua</button>
+    <button class="filter-btn" data-filter="menunggu" onclick="setFilter(this)">⏳ Menunggu</button>
+    <button class="filter-btn" data-filter="mendesak" onclick="setFilter(this)">🔴 Mendesak</button>
+    <button class="filter-btn" data-filter="selesai" onclick="setFilter(this)">✅ Selesai</button>
+    <button class="filter-btn" data-filter="batal" onclick="setFilter(this)">❌ Batal</button>
+  </div>
+
+  <div id="reminder-list"></div>
+
+</main>
+
+<!-- Alarm Modal -->
+<div id="alarm-modal">
+  <div class="alarm-box">
+    <span class="alarm-emoji">🔔</span>
+    <h2>Waktunya Pendampingan!</h2>
+    <div id="alarm-info"></div>
+    <br>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-secondary" onclick="snoozeAlarm()">⏸ Tunda 10 Menit</button>
+      <button class="btn btn-primary" onclick="dismissAlarm()">✅ OK, Mengerti</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────
+let reminders = JSON.parse(localStorage.getItem('kopena-reminders') || '[]');
+let activeFilter = 'semua';
+let firingAlarmId = null;
+let alarmAudio = null;
+
+// ── Clock ──────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── Alarm tick ────────────────────────────────────────
+function checkAlarms() {
+  const now = new Date();
+  reminders.forEach(r => {
+    if (r.status === 'selesai' || r.status === 'batal' || r.alarmFired) return;
+    const janji = new Date(r.tanggal + 'T' + r.jam);
+    const remindAt = new Date(janji.getTime() - r.reminderMin * 60000);
+    if (now >= remindAt && now < janji) {
+      if (!r.alarmFired) fireAlarm(r);
+    }
+    // also fire exactly at appointment time if not yet fired
+    if (now >= janji && now < new Date(janji.getTime() + 60000)) {
+      if (!r.alarmFired) fireAlarm(r);
+    }
+  });
+}
+setInterval(checkAlarms, 15000);
+checkAlarms();
+
+function fireAlarm(r) {
+  r.alarmFired = true;
+  save();
+  firingAlarmId = r.id;
+  document.getElementById('alarm-info').innerHTML =
+    `<p class="alarm-name">${r.nama}</p>
+     <p>${r.keterangan ? r.keterangan.substring(0,120) + (r.keterangan.length>120?'…':'') : ''}</p>
+     <p style="margin-top:8px;font-size:12px;color:var(--text3)">📅 ${formatDate(r.tanggal)} &nbsp;⏰ ${r.jam} &nbsp;📍 ${r.lokasi||'-'}</p>`;
+  document.getElementById('alarm-modal').classList.add('show');
+  // Play beep sound
+  playBeep();
+  // Browser notification
+  if (Notification.permission === 'granted') {
+    new Notification('🔔 Pengingat Pendampingan – KOPENA', {
+      body: `${r.nama} | ${r.jam} | ${r.lokasi||''}`,
+      icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">📋</text></svg>'
+    });
+  }
+  renderList();
+}
+
+function playBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    function beep(freq, start, dur) {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = freq;
+      o.type = 'sine';
+      g.gain.setValueAtTime(0.4, ctx.currentTime + start);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+      o.start(ctx.currentTime + start);
+      o.stop(ctx.currentTime + start + dur + 0.05);
+    }
+    beep(880, 0, 0.15); beep(1046, 0.2, 0.15); beep(880, 0.4, 0.15);
+    beep(1046, 0.6, 0.3); beep(880, 1.0, 0.15); beep(1046, 1.2, 0.3);
+  } catch(e) {}
+}
+
+function dismissAlarm() {
+  document.getElementById('alarm-modal').classList.remove('show');
+  firingAlarmId = null;
+}
+
+function snoozeAlarm() {
+  if (!firingAlarmId) return;
+  const r = reminders.find(x => x.id === firingAlarmId);
+  if (r) {
+    r.alarmFired = false;
+    const janji = new Date(r.tanggal + 'T' + r.jam);
+    const snoozeTarget = new Date(Date.now() + 10 * 60000);
+    r.reminderMin = Math.max(0, Math.round((janji - snoozeTarget) / 60000));
+    save();
+  }
+  dismissAlarm();
+  toast('Alarm ditunda 10 menit ⏸');
+}
+
+// ── Notification permission ────────────────────────────
+function checkNotifBanner() {
+  if (Notification.permission === 'default') {
+    document.getElementById('notif-banner').style.display = 'flex';
+  }
+}
+function requestNotifPermission() {
+  Notification.requestPermission().then(p => {
+    if (p === 'granted') {
+      document.getElementById('notif-banner').style.display = 'none';
+      toast('Notifikasi aktif ✅');
+    }
+  });
+}
+checkNotifBanner();
+
+// ── Save / Load ───────────────────────────────────────
+function save() {
+  localStorage.setItem('kopena-reminders', JSON.stringify(reminders));
+}
+
+// ── Form helpers ──────────────────────────────────────
+function clearForm() {
+  ['f-nama','f-norek','f-tanggal','f-jam','f-lokasi','f-keterangan','f-petugas']
+    .forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-status').value = 'menunggu';
+  document.getElementById('f-reminder').value = '15';
+}
+
+function saveReminder() {
+  const nama = document.getElementById('f-nama').value.trim();
+  const tanggal = document.getElementById('f-tanggal').value;
+  const jam = document.getElementById('f-jam').value;
+  if (!nama) return toast('Nama nasabah wajib diisi ⚠️');
+  if (!tanggal) return toast('Tanggal janji wajib diisi ⚠️');
+  if (!jam) return toast('Jam janji wajib diisi ⚠️');
+
+  const r = {
+    id: Date.now().toString(),
+    nama,
+    norek:       document.getElementById('f-norek').value.trim(),
+    tanggal,
+    jam,
+    lokasi:      document.getElementById('f-lokasi').value.trim(),
+    status:      document.getElementById('f-status').value,
+    keterangan:  document.getElementById('f-keterangan').value.trim(),
+    reminderMin: parseInt(document.getElementById('f-reminder').value),
+    petugas:     document.getElementById('f-petugas').value.trim(),
+    createdAt:   new Date().toISOString(),
+    alarmFired:  false,
+  };
+
+  reminders.unshift(r);
+  save();
+  clearForm();
+  renderList();
+  updateStats();
+  toast('Janji berhasil disimpan 🎉');
+}
+
+function deleteReminder(id) {
+  if (!confirm('Hapus janji ini?')) return;
+  reminders = reminders.filter(r => r.id !== id);
+  save(); renderList(); updateStats();
+  toast('Janji dihapus 🗑');
+}
+
+function changeStatus(id, status) {
+  const r = reminders.find(x => x.id === id);
+  if (r) { r.status = status; save(); renderList(); updateStats(); }
+}
+
+function resetAlarm(id) {
+  const r = reminders.find(x => x.id === id);
+  if (r) { r.alarmFired = false; save(); renderList(); toast('Alarm direset 🔔'); }
+}
+
+// ── Filter ────────────────────────────────────────────
+function setFilter(btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeFilter = btn.dataset.filter;
+  renderList();
+}
+
+// ── Render ────────────────────────────────────────────
+const MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+function formatDate(d) {
+  if (!d) return '-';
+  const [y,m,dd] = d.split('-');
+  return `${dd} ${MONTHS[parseInt(m)-1]} ${y}`;
+}
+
+function renderList() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  let list = reminders
+    .filter(r => activeFilter === 'semua' || r.status === activeFilter)
+    .filter(r =>
+      r.nama.toLowerCase().includes(q) ||
+      (r.keterangan||'').toLowerCase().includes(q) ||
+      (r.norek||'').toLowerCase().includes(q) ||
+      (r.lokasi||'').toLowerCase().includes(q) ||
+      (r.petugas||'').toLowerCase().includes(q)
+    )
+    .sort((a,b) => (a.tanggal+a.jam).localeCompare(b.tanggal+b.jam));
+
+  const el = document.getElementById('reminder-list');
+  if (!list.length) {
+    el.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>Tidak ada janji ditemukan.</p></div>`;
+    return;
+  }
+
+  const badgeMap = {
+    menunggu: 'badge-menunggu', selesai: 'badge-selesai',
+    batal: 'badge-batal', mendesak: 'badge-mendesak'
+  };
+  const statusLabel = {
+    menunggu:'⏳ Menunggu', selesai:'✅ Selesai', batal:'❌ Batal', mendesak:'🔴 Mendesak'
+  };
+
+  el.innerHTML = list.map(r => {
+    const [y,m,dd] = r.tanggal.split('-');
+    const reminderLabel = r.reminderMin > 0
+      ? `🔔 ${r.reminderMin >= 60 ? (r.reminderMin/60)+'j' : r.reminderMin+'mnt'} sebelum`
+      : '🔔 Tepat waktu';
+    const alarmBtn = r.alarmFired
+      ? `<button class="btn btn-secondary btn-sm" onclick="resetAlarm('${r.id}')">🔁 Reset Alarm</button>`
+      : '';
+    return `
+    <div class="reminder-card status-${r.status} ${r.alarmFired && r.status!=='selesai' ? 'alarm-firing' : ''}" id="card-${r.id}">
+      <div class="card-left">
+        <div class="card-date-day">${dd}</div>
+        <div class="card-date-mon">${MONTHS[parseInt(m)-1]} ${y}</div>
+        <div class="card-time">${r.jam}</div>
+      </div>
+      <div class="card-body">
+        <div class="card-header">
+          <span class="card-name">${r.nama}</span>
+          <span class="badge ${badgeMap[r.status]}">${statusLabel[r.status]}</span>
+          ${r.norek ? `<span style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace">${r.norek}</span>` : ''}
+        </div>
+        ${r.keterangan ? `<div class="card-desc">${r.keterangan}</div>` : ''}
+        <div class="card-meta">
+          ${r.lokasi ? `<span>📍 ${r.lokasi}</span>` : ''}
+          ${r.petugas ? `<span>👤 ${r.petugas}</span>` : ''}
+          <span>${reminderLabel}</span>
+          ${r.alarmFired ? '<span style="color:var(--accent3)">🔔 Alarm sudah berbunyi</span>' : ''}
+        </div>
+      </div>
+      <div class="card-actions">
+        <select class="btn btn-secondary btn-sm" style="padding:6px 10px;cursor:pointer"
+          onchange="changeStatus('${r.id}', this.value)">
+          <option value="menunggu" ${r.status==='menunggu'?'selected':''}>⏳ Menunggu</option>
+          <option value="mendesak" ${r.status==='mendesak'?'selected':''}>🔴 Mendesak</option>
+          <option value="selesai"  ${r.status==='selesai'?'selected':''}>✅ Selesai</option>
+          <option value="batal"    ${r.status==='batal'?'selected':''}>❌ Batal</option>
+        </select>
+        ${alarmBtn}
+        <button class="btn btn-danger btn-sm" onclick="deleteReminder('${r.id}')">🗑 Hapus</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateStats() {
+  document.getElementById('stat-total').textContent = reminders.length;
+  document.getElementById('stat-menunggu').textContent = reminders.filter(r=>r.status==='menunggu'||r.status==='mendesak').length;
+  document.getElementById('stat-selesai').textContent = reminders.filter(r=>r.status==='selesai').length;
+}
+
+// ── Toast ────────────────────────────────────────────
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── Init ─────────────────────────────────────────────
+// Set default date to today
+document.getElementById('f-tanggal').valueAsDate = new Date();
+
+renderList();
+updateStats();
+</script>
+</body>
+</html>
