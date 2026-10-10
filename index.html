@@ -435,9 +435,10 @@ body{
 
       <div id="tabUrl" class="settings-tab">
         <div class="hint">
-          Ambil data master langsung dari aplikasi web kamu. Tanya KOPENA akan fetch data terbaru secara otomatis.<br><br>
+          Ambil data master langsung dari aplikasi web. Tanya KOPENA akan fetch data terbaru secara otomatis.<br><br>
           <b>Contoh URL:</b><br>
-          <code>https://tungcab-limpung.vercel.app/</code>
+          <code>https://tungcab-limpung.vercel.app/</code><br>
+          <code>https://hadhinatidina91.github.io/Catatan_pinjaman/index.html</code>
         </div>
 
         <div class="fgroup">
@@ -456,7 +457,7 @@ body{
       </div>
 
       <div id="tabRules" class="settings-tab" style="display:none">
-        <div class="hint">Aturan main kantor kamu — AI akan mematuhi ini saat menjawab.</div>
+        <div class="hint">Aturan main kantor — AI akan mematuhi ini saat menjawab.</div>
         <textarea id="setRules" class="rule-editor"></textarea>
         <button class="btn-primary" style="margin-top:8px" id="btnSaveRules">Simpan Aturan</button>
       </div>
@@ -503,8 +504,8 @@ body{
 
 <script>
 /* =====================================================================
-   TANYA KOPENA — v5
-   Fitur: URL source, foto auto, analisis, koreksi, upload file
+   TANYA KOPENA — v6
+   Fitur: URL master, Firebase pelengkap, foto auto, analisis, koreksi
    ===================================================================== */
 
 /* ------------------------- 1. KONFIGURASI ------------------------- */
@@ -547,7 +548,6 @@ function num(v){
 
 const AWALAN_SUKARELA = '211';
 const AWALAN_PINJAMAN = ['541','542','543','544','551','111'];
-
 function cleanRek(rek){ return String(rek || '').replace(/\D/g, ''); }
 function getBaseID(rek){
   const r = cleanRek(rek);
@@ -682,12 +682,6 @@ function mapsUrl(alamat){
 }
 function mapsCoord(lat, lng){
   return 'https://www.google.com/maps/search/?api=1&query=' + lat + ',' + lng;
-}
-function validLatLng(l){
-  if(!l) return null;
-  const lat = Number(l.lat), lng = Number(l.lng);
-  if(!isFinite(lat) || !isFinite(lng) || (lat === 0 && lng === 0) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
-  return { lat, lng };
 }
 
 /* ------------------------- 3. STATE ------------------------- */
@@ -862,7 +856,6 @@ function parseTunggakanXlsXml(text){
       sisa_total_akhir: tunggakan_akhir_pokok + tunggakan_akhir_margin,
       tgl_jatuh_tempo,
       kode_produk: currentKodeProduk,
-      // ⭐ FIX: sudah_angsur hanya berdasarkan POKOK
       sudah_angsur: (pembayaran_pokok > 0),
       coll, cabang,
       kode_tipe: currentKodeProduk.startsWith('1') ? '1' : '5',
@@ -1018,7 +1011,6 @@ async function fetchHtml(url){
       if(text && text.length > 500) return { text, via: 'direct' };
     }
   } catch(e){ console.log('Direct gagal:', e.message); }
-
   try {
     const proxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
     const res = await fetch(proxy, { cache: 'no-store' });
@@ -1027,7 +1019,6 @@ async function fetchHtml(url){
       if(text && text.length > 500) return { text, via: 'allorigins' };
     }
   } catch(e){ console.log('allorigins gagal:', e.message); }
-
   try {
     const proxy = 'https://corsproxy.io/?' + encodeURIComponent(url);
     const res = await fetch(proxy, { cache: 'no-store' });
@@ -1036,7 +1027,6 @@ async function fetchHtml(url){
       if(text && text.length > 500) return { text, via: 'corsproxy' };
     }
   } catch(e){ console.log('corsproxy gagal:', e.message); }
-
   throw new Error('Semua cara gagal. Cek koneksi atau URL.');
 }
 
@@ -1046,7 +1036,6 @@ function extractMasterFromHtml(html){
   if(m && m[1]){
     try { return JSON.parse(m[1].trim()); } catch(e){ console.warn('Parse data-json gagal', e); }
   }
-
   // Pola 2: <script type="application/json">
   m = html.match(/<script[^>]*type=["']application\/json["'][^>]*>([\s\S]*?)<\/script>/i);
   if(m && m[1]){
@@ -1055,13 +1044,11 @@ function extractMasterFromHtml(html){
       try { return JSON.parse(t); } catch(e){}
     }
   }
-
-  // Pola 3: var DATA = [...] / const DEFAULT_DATA = [...]
+  // Pola 3: var DATA = [...]
   m = html.match(/(?:var|let|const)\s+(?:DATA|DEFAULT_DATA)\s*=\s*(\[[\s\S]*?\]);/);
   if(m && m[1]){
     try { return JSON.parse(m[1]); } catch(e){}
   }
-
   // Pola 4: cari JSON array dengan field "nama"
   const scripts = html.match(/<script[^>]*>([\s\S]*?)<\/script>/gi) || [];
   for(const s of scripts){
@@ -1073,8 +1060,7 @@ function extractMasterFromHtml(html){
       } catch(e){}
     }
   }
-
-  throw new Error('Tidak menemukan data JSON di HTML. Pastikan data ter-embed di halaman.');
+  throw new Error('Tidak menemukan data JSON di HTML.');
 }
 
 async function fetchMasterFromUrl(url, silent){
@@ -1114,12 +1100,8 @@ function scheduleUrlRefresh(){
   const cfg = loadUrlCfg();
   if(!cfg.masterUrl || !cfg.intervalMin) return;
   urlRefreshTimer = setInterval(async () => {
-    try {
-      await fetchMasterFromUrl(cfg.masterUrl, true);
-      console.log('Auto-refresh URL berhasil');
-    } catch(e){
-      console.warn('Auto-refresh URL gagal', e.message);
-    }
+    try { await fetchMasterFromUrl(cfg.masterUrl, true); console.log('Auto-refresh URL berhasil'); }
+    catch(e){ console.warn('Auto-refresh URL gagal', e.message); }
   }, cfg.intervalMin * 60 * 1000);
 }
 function tryAutoLoadFromUrl(){
@@ -1204,7 +1186,6 @@ function rebuild(){
     const nama = String(m.nama || m['Nama Anggota'] || m['Nama'] || '').trim();
     if(!norek && !nama) return;
     const p = getOrCreate(norek, nama);
-    // Multi-rekening: kalau sudah punya master, pilih yang nomor pinjamannya lebih besar
     if(p.master){
       const oldRek = cleanRek(p.master.no_rekening || '');
       const newRek = cleanRek(norek);
@@ -2771,7 +2752,6 @@ function renderCorrectionsList(){
     '</div>'
   ).join('');
 }
-
 function openSettings(){
   const st = getSettings();
   $('#setLlmOn').checked = !!st.llmOn;
@@ -2796,7 +2776,6 @@ function openSettings(){
   });
   $('#settingsOverlay').classList.add('show');
 }
-
 $('#btnSaveSettings').addEventListener('click', () => {
   saveSettings({
     llmOn: $('#setLlmOn').checked,
@@ -2812,7 +2791,6 @@ $('#btnResetSettings').addEventListener('click', () => {
   $('#settingsMsg').innerHTML = '<div class="ok-box">Pengaturan dikembalikan ke default.</div>';
 });
 $('#btnManageUpload').addEventListener('click', refreshUploadInfo);
-
 $('#settingsTabs').addEventListener('click', e => {
   const btn = e.target.closest('button[data-tab]');
   if(!btn) return;
@@ -2823,13 +2801,11 @@ $('#settingsTabs').addEventListener('click', e => {
   });
   if(btn.dataset.tab === 'corrections') renderCorrectionsList();
 });
-
 $('#btnFetchUrl').addEventListener('click', async () => {
   const url = $('#setUrlMaster').value.trim();
   if(!url) { alert('Isi URL dulu.'); return; }
   try { await fetchMasterFromUrl(url, false); } catch(e){}
 });
-
 $('#btnSaveUrlCfg').addEventListener('click', () => {
   const cfg = {
     masterUrl: $('#setUrlMaster').value.trim(),
@@ -2839,7 +2815,6 @@ $('#btnSaveUrlCfg').addEventListener('click', () => {
   scheduleUrlRefresh();
   $('#settingsMsg').innerHTML = '<div class="ok-box">✓ Pengaturan URL disimpan. Auto-refresh tiap ' + cfg.intervalMin + ' menit.</div>';
 });
-
 $('#btnSaveRules').addEventListener('click', () => {
   saveRules($('#setRules').value);
   $('#settingsMsg').innerHTML = '<div class="ok-box">✓ Aturan disimpan.</div>';
