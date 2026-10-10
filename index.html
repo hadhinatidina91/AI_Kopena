@@ -1382,7 +1382,9 @@ setInterval(fetchMaster,5*60*1000);
 /* ============ PWA ============ */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW', err));
+    navigator.serviceWorker.register('/AI_Kopena/sw.js', { scope: '/AI_Kopena/' })
+      .then(reg => { try { reg.update(); } catch(e){} })
+      .catch(err => console.warn('SW', err));
   });
 }
 

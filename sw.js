@@ -1,16 +1,20 @@
-/* Tanya KOPENA — Service Worker (cache shell agar bisa diinstal & offline dasar) */
-const CACHE = 'tanya-kopena-v1';
+/* Tanya KOPENA — Service Worker */
+const CACHE = 'tanya-kopena-v2';
 const SHELL = [
-  './',
-  './index.html',
-  './manifest.json',
-  './icon-192.png',
-  './icon-512.png'
+  '/AI_Kopena/',
+  '/AI_Kopena/index.html',
+  '/AI_Kopena/manifest.json',
+  '/AI_Kopena/icon-192.png',
+  '/AI_Kopena/icon-512.png'
 ];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(SHELL).catch(() => {})).then(() => self.skipWaiting())
+    caches.open(CACHE).then(async (c) => {
+      for (const url of SHELL) {
+        try { await c.add(url); } catch (err) { console.warn('cache skip', url, err); }
+      }
+    }).then(() => self.skipWaiting())
   );
 });
 
@@ -24,8 +28,8 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
-  // Jangan cache API eksternal (Firebase, Groq, Apps Script)
   if (url.origin !== self.location.origin) return;
+  if (!url.pathname.startsWith('/AI_Kopena/')) return;
 
   e.respondWith(
     caches.match(e.request).then((cached) => {
