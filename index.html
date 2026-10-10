@@ -514,6 +514,7 @@ function detectIntent(t){
   if(/belum\s+(pernah\s+)?(di)?kunjung/.test(s)||has('belum ada kunjungan'))return'belum';
   if(has('foto','photo','gambar','dokumentasi'))return'foto';
   if(has('riwayat','histori','kapan dikunjungi','hasil kunjungan','catatan'))return'riwayat';
+  if(has('laporan marketing','laporan harian','cek laporan','laporan marketing','marketing tanggal','laporan tanggal')||(/\blaporan\b/.test(s)&&has('marketing','harian','tanggal')))return'laporan';
   if(/angsur|setor|\bbayar\b/.test(s))return'angsuran';
   if(/(total|jumlah|berapa).*(nasabah|rekening|anggota)/.test(s))return'total';
   if(has('rangkum','statistik','ringkasan'))return'statistik';
@@ -542,7 +543,8 @@ function answerBantuan(){
     '<li><b>Jumlah Coll 3</b> / <b>sebaran Coll</b></li>'+
     '<li><b>Siapa yang belum dikunjungi?</b></li>'+
     '<li><b>Riwayat kunjungan Surip</b> · <b>Foto Surip</b></li>'+
-    '<li><b>Rekap per AO</b> · <b>Tunggakan terbesar</b></li>'+
+    '<li><b>Laporan marketing tanggal 29 September 2026</b></li>'+
+    '<li><b>Rekap per AO</b> · <b>Tunggakan terbesar</b> · <b>Janji bayar</b></li>'+
     '<li><b>Diagnosa</b> — cek data mentah dari server</li></ul>';
 }
 function collDistOf(list){
@@ -773,6 +775,96 @@ function answerBelumDikunjungi(t){
   return h;
 }
 
+/* Parse tanggal dari teks Indonesia / ISO / dd-mm-yyyy */
+function parseDateFromText(t){
+  const s=String(t||'').toLowerCase();
+  const blnMap={januari:1,jan:1,februari:2,feb:2,maret:3,mar:3,april:4,apr:4,mei:5,juni:6,jun:6,juli:7,jul:7,agustus:8,agu:8,september:9,sep:9,oktober:10,okt:10,november:11,nov:11,desember:12,des:12};
+  // 2026-09-29 atau 29-09-2026 atau 29/09/2026
+  let m=s.match(/\b(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})\b/);
+  if(m)return m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0');
+  m=s.match(/\b(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})\b/);
+  if(m)return m[3]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0');
+  // 29 september 2026 / 29 sep 2026
+  m=s.match(/\b(\d{1,2})\s+(januari|jan|februari|feb|maret|mar|april|apr|mei|juni|jun|juli|jul|agustus|agu|september|sep|oktober|okt|november|nov|desember|des)\s+(\d{4})\b/i);
+  if(m){
+    const bl=blnMap[m[2].toLowerCase()]||0;
+    if(bl)return m[3]+'-'+String(bl).padStart(2,'0')+'-'+String(m[1]).padStart(2,'0');
+  }
+  // hanya "hari ini" / "kemarin"
+  if(/\bhari\s*ini\b/.test(s))return todayISO();
+  if(/\bkemarin\b/.test(s)){const d=new Date();d.setDate(d.getDate()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+  return null;
+}
+
+function answerLaporanMarketing(t){
+  const tgl=parseDateFromText(t);
+  const s=String(t||'').toLowerCase();
+  // filter AO jika disebut (dari data laporan)
+  const aosMk=[...new Set(DB.mk.map(r=>r.ao).filter(Boolean))];
+  let aoFilter=null;
+  for(const a of aosMk){
+    const an=norm(a).toLowerCase();
+    if(an && s.includes(an)){aoFilter=a;break}
+    if(scoreName(extractName(t),a)>=70){aoFilter=a;break}
+  }
+  if(!aoFilter){
+    const namaCoba=extractName(t);
+    if(namaCoba.length>=3){
+      for(const a of aosMk){
+        if(scoreName(namaCoba,a)>=74){aoFilter=a;break}
+      }
+    }
+  }
+
+  let list=DB.mk.slice();
+  if(tgl) list=list.filter(r=>String(r.tanggal||'').slice(0,10)===tgl);
+  if(aoFilter) list=list.filter(r=>r.ao===aoFilter);
+
+  list.sort((a,b)=>{
+    const da=(b.tanggal||'')+'|'+(b.createdAt||0);
+    const db=(a.tanggal||'')+'|'+(a.createdAt||0);
+    return da.localeCompare(db);
+  });
+
+  const parts=[];
+  if(tgl) parts.push(fmtTgl(tgl));
+  if(aoFilter) parts.push('AO '+aoFilter);
+  const label=parts.length?parts.join(' · '):'semua';
+
+  let h='<h3>📋 Laporan Marketing Harian — '+esc(label)+'</h3>';
+  if(!DB.ready.mk) h+=note('Data laporan marketing belum selesai dimuat. Tunggu sebentar atau tekan ⟳.','warn');
+  h+='<div class="dim">Ditemukan <b>'+list.length+'</b> laporan'+(DB.mk.length?' · total database: '+DB.mk.length:'')+'.</div>';
+
+  if(!list.length){
+    h+='<hr>';
+    if(tgl||aoFilter) h+=note('Tidak ada laporan untuk filter ini. Coba tanggal/AO lain, atau ketik <code>laporan marketing</code> untuk semua.','warn');
+    else h+=note('Belum ada data laporan marketing.','warn');
+    return h;
+  }
+
+  const st={};
+  list.forEach(r=>{const k=r.status||'(tanpa status)';st[k]=(st[k]||0)+1});
+  h+='<div class="dim" style="margin:6px 0 8px"><b>Status:</b> '+esc(Object.entries(st).sort((a,b)=>b[1]-a[1]).map(e=>e[0]+' ('+e[1]+')').join(' · '))+'</div><hr>';
+
+  // tampilan mirip LimpungPBY: Debitur + tanggal, hasil, status, AO, norek
+  list.slice(0,30).forEach(r=>{
+    const stColor=r.status==='Sudah Bayar'?'green':(r.status==='Janji Bayar'?'amber':(r.status==='Tidak Bertemu'?'red':'grey'));
+    h+='<div class="card" data-rek="'+esc(r.norek||'')+'" data-nama="'+esc(r.debitur||'')+'">'+
+      '<div class="top"><div class="name">'+esc(r.debitur||'(tanpa nama)')+'</div><div class="rek nums">'+esc(fmtTgl(r.tanggal))+'</div></div>'+
+      '<div class="line">'+esc(r.hasil||'(tanpa catatan)')+'</div>'+
+      '<div class="badges">'+
+        badge(r.status||'?',stColor)+
+        (r.ao?badge(r.ao,''):'')+
+        (r.norek?badge(r.norek,'grey'):'')+
+        (r.target?badge('🎯 '+fmtTgl(r.target),'amber'):'')+
+      '</div>'+
+      renderFotoStrip(extractFotos(r),false)+
+      '</div>';
+  });
+  if(list.length>30) h+='<div class="dim">Ditampilkan 30 dulu dari '+list.length+'.</div>';
+  return h;
+}
+
 function answerJanjiBayar(t){
   // Ambil laporan TERAKHIR per debitur; hanya yang status terakhirnya Janji Bayar
   const latest={};
@@ -853,6 +945,7 @@ function buildAnswer(text){
     case 'coll':return answerColl(text);
     case 'ao':return answerAO(text);
     case 'janji':return answerJanjiBayar(text);
+    case 'laporan':return answerLaporanMarketing(text);
     case 'belum':return answerBelumDikunjungi(text);
     case 'foto':return answerFoto(text);
     case 'riwayat':return answerRiwayat(text);
@@ -889,8 +982,8 @@ let lastNama='',HIST=[];
 
 function llmSystemPrompt(){
   const aos=[...new Set(DB.master.map(m=>m.ao).filter(Boolean))].join('; ');
-  return 'Kamu pemroses pertanyaan untuk aplikasi data nasabah koperasi KOPENA Limpung. Tugasmu HANYA mengubah pertanyaan pengguna menjadi satu objek JSON perintah. JANGAN pernah menyebut angka data.\n'+
-  'Format: {"intent":"...","nama":string|null,"belum":boolean,"coll":number|null,"coll_tinggi":boolean,"ao":string|null,"balasan":string|null}\n'+
+  return 'Kamu pemroses pertanyaan untuk aplikasi data nasabah koperasi KOPENA Limpung. Tugasmu HANYA mengubah pertanyaan pengguna menjadi satu objek JSON perintah. JANGAN pernah menyebut angka data. JANGAN bilang "tidak punya akses" — semua data nasabah, kunjungan, dan laporan marketing sudah tersedia di aplikasi.\n'+
+  'Format: {"intent":"...","nama":string|null,"belum":boolean,"coll":number|null,"coll_tinggi":boolean,"ao":string|null,"tanggal":string|null,"balasan":string|null}\n'+
   'Intent yang tersedia:\n'+
   '- cari: profil/data satu nasabah (isi nama)\n'+
   '- riwayat: riwayat kunjungan/penagihan satu nasabah (isi nama)\n'+
@@ -902,10 +995,11 @@ function llmSystemPrompt(){
   '- statistik: rangkuman umum\n'+
   '- tunggakan: outstanding terbesar\n'+
   '- janji: janji bayar\n'+
+  '- laporan: laporan marketing / laporan harian. Isi tanggal (format YYYY-MM-DD) jika disebut. Isi ao jika menyebut nama AO. Contoh: "cek laporan marketing tanggal 29 september 2026" → intent laporan, tanggal "2026-09-29"; "laporan marketing Dimas tanggal 21 september" → intent laporan, tanggal "2026-09-21", ao "DIMAS RIZKI PUTRA SULISTIO".\n'+
   '- belum_dikunjungi: yang belum pernah dikunjungi\n'+
   '- ao: rekap per AO (isi ao persis dari daftar jika menyebut satu AO)\n'+
   '- diagnosa, bantuan\n'+
-  '- ngobrol: sapaan/obrolan di luar data; isi balasan maksimal 2 kalimat Indonesia santai, tanpa angka.\n'+
+  '- ngobrol: HANYA untuk sapaan murni (halo, terima kasih, siapa kamu). JANGAN pakai ngobrol jika pertanyaan menyebut data, laporan, nasabah, angsuran, kunjungan, coll, AO, atau tanggal. Isi balasan maksimal 2 kalimat Indonesia santai, tanpa angka.\n'+
   'Jika pengguna menyebut "dia/nya/yang tadi", pakai nama terakhir: '+(lastNama||'(belum ada)')+'.\n'+
   'Daftar AO: '+(aos||'-')+'\nKeluarkan JSON saja.';
 }
@@ -970,6 +1064,14 @@ function routeToCommand(r){
     case'statistik':return'rangkum data';
     case'tunggakan':return'tunggakan terbesar';
     case'janji':return'janji bayar';
+    case'laporan':{
+      const tgl=r.tanggal?String(r.tanggal).trim():'';
+      const ao=r.ao?String(r.ao).trim():'';
+      let cmd='laporan marketing';
+      if(tgl) cmd+=' tanggal '+tgl;
+      if(ao) cmd+=' '+ao;
+      return cmd;
+    }
     case'belum_dikunjungi':return'siapa yang belum dikunjungi';
     case'ao':return'rekap per AO '+(r.ao||'');
     case'diagnosa':return'diagnosa';
@@ -1003,7 +1105,7 @@ function addAiMsg(html){const d=document.createElement('div');d.className='msg a
 function addTyping(){const d=document.createElement('div');d.className='msg ai';d.id='typing';d.innerHTML='<div class="avatar">TK</div><div class="bubble"><div class="typing"><i></i><i></i><i></i></div></div>';chatEl.appendChild(d);scrollBottom()}
 function removeTyping(){const t=$('#typing');if(t)t.remove()}
 
-const CHIPS=['Berapa nasabah sudah angsur?','Yang belum angsur','Berapa yang lunas?','Sebaran Coll','Siapa yang belum dikunjungi?','Ada yang janji bayar?','Rekap per AO','Tunggakan terbesar','Diagnosa'];
+const CHIPS=['Berapa nasabah sudah angsur?','Yang belum angsur','Berapa yang lunas?','Sebaran Coll','Siapa yang belum dikunjungi?','Ada yang janji bayar?','Laporan marketing','Rekap per AO','Tunggakan terbesar','Diagnosa'];
 
 function renderChips(){
   chipsEl.innerHTML='';
