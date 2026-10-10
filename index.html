@@ -34,6 +34,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,Bl
 .bubble p{margin:0 0 8px}.bubble p:last-child{margin-bottom:0}
 .bubble ul{margin:6px 0;padding-left:18px}.bubble li{margin-bottom:4px}
 .bubble code{background:#eef3f1;padding:1px 5px;border-radius:5px;font-size:12.5px}
+.bubble pre{background:#f3f6f5;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:11px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;margin:6px 0}
 .bubble .dim{color:var(--muted);font-size:12.5px}
 .bubble hr{border:0;border-top:1px dashed var(--line);margin:10px 0}
 .card{border:1px solid var(--line);border-radius:12px;padding:10px 11px;margin:8px 0;background:#fbfdfc;cursor:pointer}
@@ -64,6 +65,11 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,Bl
 .foto-thumb.big{width:88px;height:88px}
 .photo-block{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0}
 .photo-block .pb-head{font-size:12px;color:var(--muted);margin-bottom:6px;line-height:1.4}
+.note{padding:10px 12px;border-radius:10px;margin:8px 0}
+.note.ok{background:#e6f4ea;border:1px solid #c6e6d1;color:#1c6b3d}
+.note.bad{background:#fbeae7;border:1px solid #f2c8c1;color:#9c3225}
+.note.warn{background:#fbf3e2;border:1px solid #f0d888;color:#7a5c00}
+.note-del{margin-left:6px;font-size:10px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--red);cursor:pointer}
 .typing{display:flex;gap:4px;padding:4px 2px}
 .typing i{width:7px;height:7px;border-radius:50%;background:#b9c9c3;animation:bl 1.1s infinite}
 .typing i:nth-child(2){animation-delay:.18s}.typing i:nth-child(3){animation-delay:.36s}
@@ -96,6 +102,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,Bl
     <h1>Tanya KOPENA</h1>
     <p id="srcStatus">Menyambungkan…</p>
   </div>
+  <button class="icon-btn" id="btnKey" title="Kunci AI">🔑</button>
   <button class="icon-btn" id="btnClearChat" title="Obrolan baru">🗑</button>
   <button class="icon-btn" id="btnReload" title="Muat ulang">⟳</button>
 </header>
@@ -113,13 +120,18 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,Bl
 
 <script>
 /* ============================================================
-   TANYA KOPENA v1.0 — CHAT ASISTEN
+   TANYA KOPENA v1.1 — CHAT ASISTEN (perbaikan jawaban)
    Sumber:
    1. Master nasabah: SHEET_API_URL (sama dengan TungCab)
-   2. Kunjungan & foto: Firebase catatanpembiayaan
-   3. Laporan marketing: Firebase pembiayaankpnlimpung
-   Catatan: field `sudah_angsur` diambil langsung dari server,
-   TIDAK dihitung ulang.
+   2. Kunjungan & foto: Firebase catatanpembiayaan (Buku Kunjungan)
+   3. Laporan marketing: Firebase pembiayaankpnlimpung (LimpungPBY)
+   Perbaikan v1.1:
+   - Nama kolom master dinormalisasi (tidak peduli huruf besar/kecil, spasi, underscore)
+   - Status LUNAS dipisah dari nasabah aktif
+   - "sudah angsur" tidak lagi hanya cek === true (bisa "Ya", 1, "SUDAH", dst)
+   - Pertanyaan umum tidak lagi salah dikira nama orang
+   - "Belum dikunjungi" hanya menghitung yang benar-benar punya catatan kunjungan
+   - Perintah "diagnosa" untuk melihat data mentah dari server
    ============================================================ */
 
 /* ============ KONFIG ============ */
@@ -135,7 +147,7 @@ const DETAIL_KEY = "nasabah-detail-v2";
 /* ============ UTIL ============ */
 const $ = (s,r)=>(r||document).querySelector(s);
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function num(v){if(v===''||v==null)return 0;const n=Number(String(v).replace(/[^0-9.\-]/g,''));return isNaN(n)?0:n}
+function num(v){if(v===''||v==null)return 0;if(typeof v==='number')return isFinite(v)?v:0;let s=String(v).trim();if(/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s))s=s.replace(/\./g,'').replace(',','.');else if(/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(s))s=s.replace(/,/g,'');else s=s.replace(/,/g,'.');const n=Number(s.replace(/[^0-9.\-]/g,''));return isNaN(n)?0:n}
 function norm(s){return String(s||'').toUpperCase().replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim()}
 function normNama(s){let t=String(s||'').toUpperCase();t=t.replace(/\b(H|HJ|HAJI|HAJAH|MUH|MOH|MOHAMMAD|MUHAMMAD|ABD|ABDUL|PAK|BU|BAPAK|IBU|SDR|SDRI)\b\.?\s+/g,' ');t=t.replace(/[^A-Z0-9 ]/g,' ');return t.replace(/\s+/g,' ').trim()}
 function lev(a,b){if(a===b)return 0;if(!a.length)return b.length;if(!b.length)return a.length;const m=[];for(let i=0;i<=b.length;i++)m[i]=[i];for(let j=0;j<=a.length;j++)m[0][j]=j;for(let i=1;i<=b.length;i++)for(let j=1;j<=a.length;j++)m[i][j]=b[i-1]===a[j-1]?m[i-1][j-1]:Math.min(m[i-1][j-1]+1,m[i][j-1]+1,m[i-1][j]+1);return m[b.length][a.length]}
@@ -144,15 +156,88 @@ function fmtRpFull(v){return'Rp '+Math.round(num(v)).toLocaleString('id-ID')}
 const BLN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 function fmtTgl(iso){if(!iso)return'-';const s=String(iso).slice(0,10);const m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m){const m2=s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);if(m2)return m2[1]+' '+BLN[parseInt(m2[2],10)-1]+' '+m2[3];return s}return parseInt(m[3],10)+' '+BLN[parseInt(m[2],10)-1]+' '+m[1]}
 function todayISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
-function addDays(iso,n){const d=new Date(iso+'T00:00:00');d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function toArray(v){if(!v)return[];if(Array.isArray(v))return v.filter(Boolean);if(typeof v==='object')return Object.keys(v).sort((a,b)=>{const na=parseInt(a,10),nb=parseInt(b,10);if(!isNaN(na)&&!isNaN(nb))return na-nb;return String(a).localeCompare(String(b))}).map(k=>v[k]).filter(Boolean);return[]}
 function extractFotos(v){if(!v)return[];const c=[v.photos,v.fotos,v.foto,v.photo,v.images,v.gambar];for(const x of c){const arr=toArray(x);const s=arr.filter(y=>typeof y==='string'&&y.length>20);if(s.length)return s}if(typeof v.photos==='string'&&v.photos.length>20)return[v.photos];if(typeof v.foto==='string'&&v.foto.length>20)return[v.foto];return[]}
 function waLink(no,nama){if(!no)return null;let d=String(no).replace(/\D/g,'');if(!d)return null;if(d.startsWith('0'))d='62'+d.slice(1);else if(!d.startsWith('62'))d='62'+d;const t=nama?'Halo '+nama+', ':'';return'https://wa.me/'+d+'?text='+encodeURIComponent(t)}
 function mapsUrl(a){if(!a)return null;let s=String(a).trim().replace(/\bDK\.?\s*/gi,'Dukuh ').replace(/\bDS\.?\s*/gi,'Desa ').replace(/\bKEC\.?\s*/gi,'Kecamatan ').replace(/\bRT\s*\/?\s*RW\.?\s*\d+\s*\/\s*\d*/gi,' ').replace(/\s+/g,' ').trim();if(!/batang/i.test(s))s+=', Batang, Jawa Tengah';return'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(s)}
 function mapsCoord(lat,lng){return'https://www.google.com/maps/search/?api=1&query='+lat+','+lng}
+function note(t,c){return'<div class="note '+c+'">'+t+'</div>'}
 
 /* ============ STATE ============ */
-const DB = {master:[], bk:[], bkDetail:{}, mk:[], ready:{master:false,bk:false,mk:false}};
+const DB = {master:[], rawRows:[], bk:[], bkDetail:{}, mk:[], masterErr:'', paidRek:new Set(), paidNama:new Set(), ready:{master:false,bk:false,mk:false}};
+
+/* ============ NORMALISASI MASTER ============ */
+function keyOf(k){return String(k).toLowerCase().replace(/[^a-z0-9]/g,'')}
+function toBool(v){
+  if(v===undefined||v===null)return null;
+  if(typeof v==='boolean')return v;
+  if(typeof v==='number')return v!==0;
+  const s=String(v).trim().toLowerCase();
+  if(!s)return null;
+  if(/^(true|ya|y|yes|sudah|1|lunas|ok)$/.test(s))return true;
+  return false;
+}
+function normRow(raw){
+  const km={};
+  Object.keys(raw||{}).forEach(k=>{km[keyOf(k)]=raw[k]});
+  const g=(...ns)=>{for(const n of ns){if(km[n]!==undefined&&km[n]!==null&&km[n]!=='')return km[n]}return undefined};
+  const keys=Object.keys(km);
+  const collKey=keys.find(k=>k==='coll'||k==='call'||k==='kol')||keys.find(k=>/^(coll|call|kol)/.test(k));
+  let coll=null;
+  if(collKey!==undefined&&km[collKey]!==''&&km[collKey]!=null){const c=parseInt(String(km[collKey]).replace(/[^0-9]/g,''),10);if(!isNaN(c))coll=c}
+  const status=String(g('status','statusprogres','statusrekening')||'').trim().toUpperCase();
+  const lunasFlag=toBool(g('lunas','islunas'));
+  const r={
+    _raw:raw,
+    nama:String(g('nama','namaanggota','namanasabah','namadebitur','debitur')||'').trim(),
+    no_rekening:String(g('norekening','norek','nomorrekening','rekening','norekpembiayaan','rekpembiayaan','norekeningpembiayaan')||'').trim(),
+    ao:String(g('ao','namaao','accountofficer')||'').trim(),
+    coll:coll,
+    saldo:num(g('saldopokoknet','sisapokokakhir','sisapokok','saldo','outstanding','os','baki','bakidebet','sisapinjaman')),
+    saldo_total:num(g('saldototalnet','sisatotalakhir')),
+    saldo_raw:num(g('saldo')),
+    _adaNet:(km.saldopokoknet!==undefined&&km.saldototalnet!==undefined),
+    plafon:num(g('plafon','plafond')),
+    angsuran_bulanan:num(g('angsuranbulanan','angsuranperbulan','angsuran')),
+    pembayaran_pokok:num(g('pembayaranpokok','bayarpokok','pokok')),
+    pembayaran_margin:num(g('pembayaranmargin','bayarmargin','margin')),
+    tgl_jatuh_tempo:g('tgljatuhtempo','jatuhtempo','tanggaljatuhtempo')||'',
+    alamat:String(g('alamat')||'').trim(),
+    no_hp:String(g('nohp','hp','nowa','nowhatsapp','telepon','telp')||'').trim(),
+    produk:String(g('produk','jenisproduk','jenispembiayaan')||'').trim(),
+    status:status,
+    lunas:false,
+    sudah_angsur:toBool(g('sudahangsur','sudahangsuran','sudahbayar','statusangsur','statusangsuran'))
+  };
+  /* Server TungCab tidak punya kolom status/lunas. Lunas = ditandai eksplisit, atau saldo pokok & total sama-sama nol */
+  r.saldo_nol=r._adaNet&&r.saldo<=0&&r.saldo_total<=0;
+  r.lunas=(status==='LUNAS')||lunasFlag===true||r.saldo_nol;
+  return r;
+}
+function produkDist(list){const d={};list.forEach(m=>{const k=m.produk||'(tanpa produk)';d[k]=(d[k]||0)+1});return d}
+function nasabahUnik(list){return new Set(list.map(m=>normNama(m.nama)).filter(Boolean)).size}
+function aktifList(){return DB.master.filter(m=>!m.lunas)}
+function lunasList(){return DB.master.filter(m=>m.lunas)}
+function buildPaidSets(){
+  const ym=todayISO().slice(0,7);
+  DB.paidRek=new Set();DB.paidNama=new Set();
+  DB.mk.forEach(r=>{
+    if(r.status!=='Sudah Bayar')return;
+    if(String(r.tanggal||'').slice(0,7)!==ym)return;
+    if(r.norek)DB.paidRek.add(String(r.norek).trim());
+    if(r.debitur)DB.paidNama.add(normNama(r.debitur));
+  });
+}
+function serverHasAngsurFlag(){return DB.master.some(m=>m.sudah_angsur!==null)}
+function sudahAngsur(m){
+  if(m.sudah_angsur!==null)return m.sudah_angsur;
+  if(num(m.pembayaran_pokok)+num(m.pembayaran_margin)>0)return true;
+  if(m.no_rekening&&DB.paidRek.has(m.no_rekening))return true;
+  return DB.paidNama.has(normNama(m.nama));
+}
+function angsurSrcLabel(){
+  return serverHasAngsurFlag()?'Status angsur: dari server TungCab.':'Server tidak mengirim kolom status angsur, jadi dihitung dari data pembayaran pokok/margin + laporan "Sudah Bayar" bulan ini.';
+}
 
 /* ============ FIREBASE ============ */
 let bkDb=null, mkDb=null;
@@ -161,12 +246,14 @@ try{const a=firebase.initializeApp(CFG_MK,'kopena-mk');mkDb=a.database()}catch(e
 
 function parseJsonSafe(v){if(v==null)return null;if(typeof v==='object')return v;try{return JSON.parse(v)}catch(e){return null}}
 
+let bkListening=false,mkListening=false;
 function listenBK(){
-  if(!bkDb)return;
+  if(!bkDb||bkListening)return;
+  bkListening=true;
   bkDb.ref(BK_ROOT).on('value',snap=>{
     const val=snap.val()||{};
     const idx=parseJsonSafe(val[INDEX_KEY])||[];
-    DB.bk=Array.isArray(idx)?idx.filter(n=>n&&!n.deletedAt):toArray(idx);
+    DB.bk=(Array.isArray(idx)?idx:toArray(idx)).filter(n=>n&&!n.deletedAt);
     const det=val[DETAIL_KEY]||{},out={};
     Object.keys(det).forEach(id=>{const d=parseJsonSafe(det[id]);if(d)out[id]=d});
     DB.bkDetail=out;
@@ -175,10 +262,12 @@ function listenBK(){
   },err=>{console.warn('BK',err)});
 }
 function listenMK(){
-  if(!mkDb)return;
+  if(!mkDb||mkListening)return;
+  mkListening=true;
   mkDb.ref('laporanMarketing').on('value',snap=>{
     const val=snap.val()||{};
     DB.mk=Object.entries(val).map(([k,r])=>Object.assign({},r,{_id:k}));
+    buildPaidSets();
     DB.ready.mk=true;
     updateStatus();
   },err=>{console.warn('MK',err)});
@@ -187,16 +276,26 @@ async function fetchMaster(){
   try{
     const res=await fetch(SHEET_API_URL+'?key='+encodeURIComponent(SHEET_KEY),{cache:'no-store'});
     if(!res.ok)throw new Error('HTTP '+res.status);
-    const rows=await res.json();
-    if(!Array.isArray(rows))throw new Error('Format salah');
-    DB.master=rows;
+    const txt=await res.text();
+    let data;
+    try{data=JSON.parse(txt)}catch(e){throw new Error('Respons bukan JSON (cek izin deploy Apps Script)')}
+    let rows=Array.isArray(data)?data:null;
+    if(!rows&&data&&typeof data==='object'){
+      if(data.error)throw new Error(String(data.error));
+      const k=Object.keys(data).find(k=>Array.isArray(data[k]));
+      if(k)rows=data[k];
+    }
+    if(!rows)throw new Error('Format data tidak dikenal');
+    DB.rawRows=rows.filter(r=>r&&typeof r==='object');
+    DB.master=DB.rawRows.map(normRow).filter(m=>m.nama||m.no_rekening);
+    DB.masterErr='';
     DB.ready.master=true;
-    updateStatus();
   }catch(e){
     console.warn('Master error',e);
-    DB.ready.master=false;
-    updateStatus();
+    DB.masterErr=String(e.message||e);
+    DB.ready.master=DB.master.length>0;
   }
+  updateStatus();
 }
 
 function updateStatus(){
@@ -204,6 +303,8 @@ function updateStatus(){
   parts.push(DB.ready.master?('🟢 Master ('+DB.master.length+')'):'🔴 Master');
   parts.push(DB.ready.bk?'🟢 Kunjungan':'🔴 Kunjungan');
   parts.push(DB.ready.mk?'🟢 Laporan':'🔴 Laporan');
+  parts.push(getKey()?'🤖 AI':'⚪ AI mati');
+  parts.push(memShared===false?'🧠 lokal':'🧠 bersama');
   $('#srcStatus').textContent=parts.join(' · ');
 }
 
@@ -240,22 +341,18 @@ function findMasterRecords(query,limit){
     if(sRek>s)s=sRek;
     const sAl=scoreName(q,m.alamat)*0.4;
     if(sAl>s)s=sAl;
-    if(s>=30)scored.push({m,s});
+    if(s>=40)scored.push({m,s});
   });
   scored.sort((a,b)=>b.s-a.s);
   return scored.slice(0,limit||8).map(x=>x.m);
 }
-
 function findMasterByRek(rek){const r=String(rek||'').trim();if(!r)return null;return DB.master.find(m=>m.no_rekening===r)||null}
-
 function findMasterByName(nama){
   if(!nama)return null;
   const key=normNama(nama);
   if(!key)return null;
-  // exact dulu
   let hit=DB.master.find(m=>normNama(m.nama)===key);
   if(hit)return hit;
-  // fuzzy
   let best=null,bestS=0;
   DB.master.forEach(m=>{
     const s=scoreName(nama,m.nama);
@@ -263,14 +360,18 @@ function findMasterByName(nama){
   });
   return best;
 }
+/* Cari 1 nasabah dari teks nama — null kalau tidak yakin */
+function resolveOne(nama){
+  if(!nama||nama.length<3)return null;
+  return findMasterByName(nama)||findMasterRecords(nama,1)[0]||null;
+}
 
-/* Ambil kunjungan + laporan dari Firebase untuk record tertentu (match by nama fuzzy) */
+/* Kunjungan + laporan untuk 1 nasabah */
 function getFirebaseTimeline(masterRec){
   if(!masterRec)return[];
   const nameKey=normNama(masterRec.nama);
   const rekKey=String(masterRec.no_rekening||'').trim();
   const out=[];
-  // BK visits
   DB.bk.forEach(n=>{
     const rekP=String(n.rekPembiayaan||'').trim();
     const rekS=String(n.rekSimpanan||'').trim();
@@ -281,26 +382,16 @@ function getFirebaseTimeline(masterRec){
     if(det){
       toArray(det.kunjungan).forEach(v=>{
         if(v&&!v.deletedAt){
-          out.push({
-            sumber:'buku', tanggal:v.tanggal||'', hasil:v.hasil||'',
-            lokasi:v.location||null, fotos:extractFotos(v),
-            ao:n.ao||'', status:''
-          });
+          out.push({sumber:'buku',tanggal:v.tanggal||'',hasil:v.hasil||'',lokasi:v.location||null,fotos:extractFotos(v),ao:n.ao||'',status:''});
         }
       });
     }
   });
-  // MK reports
   DB.mk.forEach(r=>{
     const sameRek=(rekKey&&String(r.norek||'').trim()===rekKey);
     const sameName=(nameKey&&normNama(r.debitur||'')===nameKey);
     if(!sameRek&&!sameName)return;
-    out.push({
-      sumber:'marketing', tanggal:r.tanggal||'', hasil:r.hasil||'',
-      status:r.status||'', target:r.target||'', ao:r.ao||'',
-      lokasi:r.lokasi||null, fotos:extractFotos(r),
-      createdAt:r.createdAt||0
-    });
+    out.push({sumber:'marketing',tanggal:r.tanggal||'',hasil:r.hasil||'',status:r.status||'',target:r.target||'',ao:r.ao||'',lokasi:r.lokasi||null,fotos:extractFotos(r),createdAt:r.createdAt||0});
   });
   out.sort((a,b)=>(b.tanggal||'').localeCompare(a.tanggal||''));
   return out;
@@ -327,52 +418,51 @@ function renderLightbox(){
     (lbFotos.length>1?'<div class="lb-info">Foto '+(lbIdx+1)+' dari '+lbFotos.length+'</div>':'');
 }
 
+function collBadge(m){
+  if(m.coll==null)return'';
+  return badge('Coll '+m.coll,m.coll>=3?'red':(m.coll===0?'green':'amber'));
+}
 function masterCard(m){
-  const angsur=m.sudah_angsur===true;
   let b='';
   b+=badge(m.ao||'Tanpa AO',m.ao?'':'grey');
-  if(m.coll!=null&&m.coll!=='')b+=badge('Coll '+m.coll,num(m.coll)>=3?'red':(num(m.coll)===0?'green':'amber'));
-  b+=badge(angsur?'✓ Sudah angsur':'Belum angsur',angsur?'green':'grey');
-  if(num(m.saldo)>0)b+=badge('OS '+fmtRp(m.saldo),'amber');
-  return'<div class="card" data-rek="'+esc(m.no_rekening)+'"><div class="top"><div class="name">'+esc(m.nama)+'</div><div class="rek">'+esc(m.no_rekening)+'</div></div>'+
+  b+=collBadge(m);
+  if(m.lunas)b+=badge('LUNAS','green');
+  else{const a=sudahAngsur(m);b+=badge(a?'✓ Sudah angsur':'Belum angsur',a?'green':'grey')}
+  if(m.saldo>0)b+=badge('OS '+fmtRp(m.saldo),'amber');
+  return'<div class="card" data-rek="'+esc(m.no_rekening)+'" data-nama="'+esc(m.nama)+'"><div class="top"><div class="name">'+esc(m.nama)+'</div><div class="rek">'+esc(m.no_rekening)+'</div></div>'+
     '<div class="badges">'+b+'</div>'+
-    '<div class="line">'+esc(m.produk||'')+(num(m.angsuran_bulanan)?' · Angsuran '+fmtRp(m.angsuran_bulanan):'')+'</div></div>';
+    '<div class="line">'+esc(m.produk||'')+(m.angsuran_bulanan?(m.produk?' · ':'')+'Angsuran '+fmtRp(m.angsuran_bulanan):'')+'</div></div>';
 }
 
 function masterDetail(m){
   const tgl=getFirebaseTimeline(m);
   const fotoCount=tgl.reduce((s,v)=>s+(v.fotos?v.fotos.length:0),0);
-  const angsur=m.sudah_angsur===true;
+  const angsur=sudahAngsur(m);
   let html='<h3>'+esc(m.nama)+'</h3>';
-  html+='<div class="dim nums">'+esc(m.no_rekening)+' · '+esc(m.produk||'')+'</div><hr>';
+  html+='<div class="dim nums">'+esc(m.no_rekening)+(m.produk?' · '+esc(m.produk):'')+'</div><hr>';
   html+='<dl class="kv">';
   if(m.ao)html+='<dt>AO</dt><dd>'+esc(m.ao)+'</dd>';
-  if(m.coll!=null&&m.coll!=='')html+='<dt>Coll</dt><dd>'+num(m.coll)+'</dd>';
-  if(num(m.plafon))html+='<dt>Plafon</dt><dd class="nums">'+fmtRpFull(m.plafon)+'</dd>';
-  if(num(m.saldo))html+='<dt>Outstanding</dt><dd class="nums">'+fmtRpFull(m.saldo)+'</dd>';
-  if(num(m.angsuran_bulanan))html+='<dt>Angsuran/bln</dt><dd class="nums">'+fmtRpFull(m.angsuran_bulanan)+'</dd>';
+  if(m.status)html+='<dt>Status</dt><dd>'+esc(m.status)+'</dd>';
+  if(m.coll!=null)html+='<dt>Coll</dt><dd>'+m.coll+'</dd>';
+  if(m.plafon)html+='<dt>Plafon</dt><dd class="nums">'+fmtRpFull(m.plafon)+'</dd>';
+  if(m.saldo)html+='<dt>Outstanding</dt><dd class="nums">'+fmtRpFull(m.saldo)+'</dd>';
+  if(m.angsuran_bulanan)html+='<dt>Angsuran/bln</dt><dd class="nums">'+fmtRpFull(m.angsuran_bulanan)+'</dd>';
   if(m.tgl_jatuh_tempo)html+='<dt>Jatuh tempo</dt><dd>'+esc(m.tgl_jatuh_tempo)+'</dd>';
-  html+='<dt>Status angsur</dt><dd>'+badge(angsur?'✓ Sudah':'Belum',angsur?'green':'amber')+'</dd>';
+  if(m.alamat)html+='<dt>Alamat</dt><dd>'+esc(m.alamat)+'</dd>';
+  html+='<dt>Status angsur</dt><dd>'+(m.lunas?badge('LUNAS','green'):badge(angsur?'✓ Sudah':'Belum',angsur?'green':'amber'))+'</dd>';
   html+='<dt>Total kunjungan</dt><dd>'+tgl.length+'×</dd>';
   if(fotoCount)html+='<dt>Foto</dt><dd>'+fotoCount+'</dd>';
   html+='</dl>';
-
-  // Info pembayaran pokok & margin
-  if(num(m.pembayaran_pokok)||num(m.pembayaran_margin)){
-    html+='<hr><div class="dim"><b>Pembayaran periode ini:</b></div>';
-    html+='<dl class="kv">';
-    if(num(m.pembayaran_pokok))html+='<dt>Pokok</dt><dd class="nums">'+fmtRpFull(m.pembayaran_pokok)+'</dd>';
-    if(num(m.pembayaran_margin))html+='<dt>Margin</dt><dd class="nums">'+fmtRpFull(m.pembayaran_margin)+'</dd>';
+  if(m.pembayaran_pokok||m.pembayaran_margin){
+    html+='<hr><div class="dim"><b>Pembayaran periode ini:</b></div><dl class="kv">';
+    if(m.pembayaran_pokok)html+='<dt>Pokok</dt><dd class="nums">'+fmtRpFull(m.pembayaran_pokok)+'</dd>';
+    if(m.pembayaran_margin)html+='<dt>Margin</dt><dd class="nums">'+fmtRpFull(m.pembayaran_margin)+'</dd>';
     html+='</dl>';
   }
-
   if(tgl.length){
-    html+='<hr><div class="dim" style="margin-bottom:6px"><b>Riwayat kunjungan & laporan:</b></div>';
-    html+='<div class="tl">';
+    html+='<hr><div class="dim" style="margin-bottom:6px"><b>Riwayat kunjungan & laporan:</b></div><div class="tl">';
     tgl.slice(0,10).forEach(v=>{
-      html+='<div class="tl-item"><div class="tl-date">'+esc(fmtTgl(v.tanggal))+
-        (v.status?' · '+esc(v.status):'')+
-        (v.sumber==='buku'?' · 📖':' · 📋')+'</div>'+
+      html+='<div class="tl-item"><div class="tl-date">'+esc(fmtTgl(v.tanggal))+(v.status?' · '+esc(v.status):'')+(v.sumber==='buku'?' · 📖':' · 📋')+'</div>'+
         '<div class="tl-text">'+esc(v.hasil||'(tanpa catatan)')+'</div>'+
         (v.ao?'<div class="tl-meta">AO: '+esc(v.ao)+'</div>':'')+
         (v.lokasi&&v.lokasi.lat?'<div class="tl-meta"><a href="'+mapsCoord(v.lokasi.lat,v.lokasi.lng)+'" target="_blank" rel="noopener">📍 Lokasi</a></div>':'')+
@@ -382,8 +472,8 @@ function masterDetail(m){
   } else {
     html+='<hr><div class="dim">Belum ada catatan kunjungan.</div>';
   }
-
-  // Action buttons
+  const nts=notesFor(m);
+  if(nts.length)html+='<hr><div class="dim" style="margin-bottom:6px"><b>📝 Catatan tim:</b></div><div class="tl">'+nts.slice(0,8).map(noteCard).join('')+'</div>';
   html+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px">';
   if(waLink(m.no_hp,m.nama))html+='<a href="'+waLink(m.no_hp,m.nama)+'" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none;background:#25a244;color:#fff;padding:10px;border-radius:10px;font-weight:700;font-size:13px">💬 WhatsApp</a>';
   if(mapsUrl(m.alamat))html+='<a href="'+mapsUrl(m.alamat)+'" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none;background:#eaf3fb;color:#1f6fbf;padding:10px;border-radius:10px;font-weight:700;font-size:13px">🗺️ Peta</a>';
@@ -391,55 +481,48 @@ function masterDetail(m){
   return html;
 }
 
-/* ============ INTENT DETECTION ============ */
+/* ============ STOPWORDS & NAMA ============ */
+const STOP=new Set(('cari carikan data info nasabah anggota riwayat kunjungan kunjungi dikunjungi dikunjung kunjung siapa apa apakah bagaimana di ke dari untuk yang dan atau tolong tampilkan lihat berapa kapan saya mau ingin tentang detail profil semua daftar pak bu bapak ibu itu ini ada dong ya saja aja hari tanggal bulan tahun terakhir dengan punya sudah udah belum pernah bayar angsur angsuran angsurannya janji tunggakan outstanding saldo foto photo gambar halo hai hi kamu bisa rekening nomor alamat dimana mana nya status total jumlah tunjukkan kita kami lunas coll call kol ao per rangkum rangkuman statistik ringkasan laporan marketing harian bulanan terbesar tertinggi tinggi rendah jadi lagi dulu mohon kasih beri minta setor yg gak nggak tidak ngga bukan masih sedang sih deh kok nih diagnosa debug cek field catatan ingatan memori ingat catat bahwa tim').split(/\s+/));
+function extractName(text){
+  let t=String(text).toLowerCase();
+  t=t.replace(/\b(atas\s+nama|dengan\s+nama|namanya|nama|pak|bapak|bu|ibu|mas|mbak|saudara|sdr|sdri)\s+/gi,' ');
+  const toks=t.replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(Boolean);
+  return toks.filter(x=>!STOP.has(x)&&x.length>1).join(' ').trim();
+}
+
+/* ============ MAKSUD PERTANYAAN ============ */
 function detectIntent(t){
   const s=' '+String(t).toLowerCase().replace(/[^\w\s\/:\-]/g,' ').replace(/\s+/g,' ')+' ';
   const clean=String(t).toLowerCase().trim().replace(/[^a-z\s]/g,' ').replace(/\s+/g,' ').trim();
   const has=(...ws)=>ws.some(w=>s.includes(w));
 
-  // Sapaan
+  if(/^(diagnosa|debug|cek data|cek field|cek kolom)/.test(clean))return'diagnosa';
+  if(/^(ingat|catat)\b/.test(clean))return'ingat';
+  if(/\b(catatan|ingatan|memori)\b/.test(s)||/apa yang (kamu )?ingat/.test(s))return'catatan';
   if(/^(halo+|hai+|hi+|hello+|hey+|hallo+|helo+)(\s+(semua|kamu|bot|admin|min))?$/i.test(clean))return'sapaan';
   if(/^(assalamualaikum|assalamu\s*alaikum|salam)/i.test(clean))return'sapaan';
   if(/^selamat\s+(pagi|siang|sore|malam)$/i.test(clean))return'sapaan';
   if(/^(pagi|siang|sore|malam|permisi|test|tes|min|admin|bot)$/i.test(clean))return'sapaan';
   if(/^(terima\s*kasih|makasih|mksh|thanks|thx|tq|syukron|alhamdulillah|oke|ok|sip|baik|mantap|keren|siap)$/i.test(clean))return'sapaan';
   if(/^(kamu|km|kamu\s+siapa|siapa\s+kamu)$/i.test(clean))return'sapaan';
-  if(/^(bisa\s+apa\s+aja|bisa\s+apa|fitur|menu)$/i.test(clean))return'bantuan';
-  if(/^(tolong|bantu|help)$/i.test(clean))return'bantuan';
+  if(/^(bisa\s+apa\s+aja|bisa\s+apa|fitur|menu|tolong|bantu|help)$/i.test(clean))return'bantuan';
 
-  // Angsuran / sudah bayar
-  if(/(sudah|udah).*(angsur|bayar|setor)/.test(s)||/berapa.*(angsur|sudah bayar)/.test(s))return'angsuran';
-  if(/yang\s+sudah\s+angsur/.test(s)||/yang\s+belum\s+angsur/.test(s))return'angsuran';
-  // Janji bayar
+  if(/\blunas\b/.test(s))return'lunas';
+  if(/\b(coll|call|kol)\b/.test(s))return'coll';
   if(has('janji bayar','janji','berjanji','sanggup bayar'))return'janji';
-  // Belum dikunjungi
-  if(has('belum dikunjungi','belum dikunjung','belum ada kunjungan','belum pernah'))return'belum';
-  // Foto
+  if(/belum\s+(pernah\s+)?(di)?kunjung/.test(s)||has('belum ada kunjungan'))return'belum';
   if(has('foto','photo','gambar','dokumentasi'))return'foto';
-  // Riwayat
-  if(has('riwayat','histori','kunjungan','kapan dikunjungi','hasil kunjungan','catatan'))return'riwayat';
-  // Total
+  if(has('riwayat','histori','kapan dikunjungi','hasil kunjungan','catatan'))return'riwayat';
+  if(/angsur|setor|\bbayar\b/.test(s))return'angsuran';
   if(/(total|jumlah|berapa).*(nasabah|rekening|anggota)/.test(s))return'total';
-  // Statistik
   if(has('rangkum','statistik','ringkasan'))return'statistik';
-  // Tunggakan
   if(has('tunggakan','outstanding','terbesar','piutang'))return'tunggakan';
-  // Coll
-  if(/\bcoll\s*[0-9]/i.test(s)||/coll\s+(berapa|tinggi)/.test(s))return'coll';
+  if(/\bao\b/.test(s))return'ao';
+  if(has('kunjungan'))return'riwayat';
   return'cari';
 }
 
-/* ============ STOPWORDS & NAME EXTRACT ============ */
-const STOP=new Set(['cari','carikan','data','info','nasabah','anggota','riwayat','kunjungan','siapa','apa','apakah','bagaimana','di','ke','dari','untuk','yang','dan','atau','tolong','tampilkan','lihat','berapa','kapan','saya','mau','ingin','tentang','detail','profil','semua','daftar','pak','bu','bapak','ibu','itu','ini','ada','dong','ya','saja','hari','tanggal','bulan','tahun','terakhir','dengan','punya','sudah','belum','pernah','dikunjungi','bayar','angsuran','janji','tunggakan','outstanding','saldo','foto','photo','gambar','halo','hai','hi','kamu','bisa','aja','rekening','nomor','alamat','dimana','mana','nya','punya','status','total','jumlah','berapa','tampilkan','tunjukkan']);
-function extractName(text){
-  let t=String(text).toLowerCase();
-  t=t.replace(/\b(atas\s+nama|dengan\s+nama|namanya|nama|pak|bapak|bu|ibu|mas|mbak|saudara|sdr|sdri|untuk|dari)\s+/gi,' ');
-  const toks=t.replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(Boolean);
-  const kept=toks.filter(x=>!STOP.has(x)&&x.length>1);
-  return kept.join(' ').trim();
-}
-
-/* ============ ANSWER HANDLERS ============ */
+/* ============ JAWABAN ============ */
 function answerSapaan(t){
   const s=String(t).toLowerCase();
   const jam=new Date().getHours();
@@ -448,123 +531,169 @@ function answerSapaan(t){
   if(/kamu\s+siapa|siapa\s+kamu/i.test(s))return'<p>Aku <b>Tanya KOPENA</b>, asisten data kantor. Aku bisa bantu cari nasabah, lihat riwayat kunjungan, cek angsuran, dan foto kunjungan.</p>';
   if(/assalamualaikum|salam/i.test(s))return'<p>Waalaikumussalam! 👋 Ada yang bisa aku bantu?</p>';
   if(/selamat|pagi|siang|sore|malam/i.test(s))return'<p>'+sap+' juga! 😊 Ada yang mau ditanya?</p>';
-  return'<p>Halo! 👋 Aku siap bantu. Tanya aja soal <b>nasabah</b>, <b>angsuran</b>, <b>kunjungan</b>, atau <b>foto</b>.</p>'+
-    '<div class="dim">Contoh: <code>cari Ahmad</code> · <code>berapa nasabah sudah angsur?</code> · <code>siapa yang belum dikunjungi?</code> · <code>foto kunjungan Surip</code></div>';
+  return'<p>Halo! 👋 Aku siap bantu. Tanya aja soal <b>nasabah</b>, <b>angsuran</b>, <b>kunjungan</b>, atau <b>foto</b>.</p>';
 }
-
 function answerBantuan(){
   return'<h3>Halo! Aku Tanya KOPENA 👋</h3><p>Contoh pertanyaan:</p><ul>'+
     '<li><b>Cari Ahmad Rizki</b> — profil nasabah</li>'+
-    '<li><b>Berapa nasabah sudah angsur?</b></li>'+
-    '<li><b>Siapa aja yang belum dikunjungi?</b></li>'+
-    '<li><b>Riwayat kunjungan Surip</b></li>'+
-    '<li><b>Foto kunjungan Surip</b></li>'+
-    '<li><b>Tunggakan terbesar</b></li>'+
-    '</ul>';
+    '<li><b>Berapa nasabah sudah angsur?</b> / <b>yang belum angsur</b></li>'+
+    '<li><b>Berapa yang lunas?</b></li>'+
+    '<li><b>Jumlah Coll 3</b> / <b>sebaran Coll</b></li>'+
+    '<li><b>Siapa yang belum dikunjungi?</b></li>'+
+    '<li><b>Riwayat kunjungan Surip</b> · <b>Foto Surip</b></li>'+
+    '<li><b>Rekap per AO</b> · <b>Tunggakan terbesar</b></li>'+
+    '<li><b>Ingat bahwa Pak Surip janji bayar tgl 20</b> — catatan untuk seluruh tim</li>'+
+    '<li><b>Lihat catatan</b> · <b>catatan Surip</b></li>'+
+    '<li><b>Diagnosa</b> — cek data mentah dari server</li></ul>';
 }
+function collDistOf(list){
+  const d={};let none=0;
+  list.forEach(m=>{if(m.coll==null){none++;return}d[m.coll]=(d[m.coll]||0)+1});
+  return {d,none};
+}
+function sumOS(list){return list.reduce((s,m)=>s+m.saldo,0)}
 
 function answerTotal(){
-  const total=DB.master.length;
-  const sudah=DB.master.filter(m=>m.sudah_angsur===true).length;
-  const belum=total-sudah;
-  let h='<h3>Total nasabah KOPENA Limpung</h3><hr>';
-  h+='<dl class="kv">';
-  h+='<dt>Total rekening</dt><dd class="nums"><b>'+total+'</b></dd>';
-  h+='<dt>Sudah angsur</dt><dd class="nums" style="color:#1f7a45"><b>'+sudah+'</b></dd>';
-  h+='<dt>Belum angsur</dt><dd class="nums" style="color:#c0392b"><b>'+belum+'</b></dd>';
-  h+='</dl>';
-  h+='<div class="dim">Data dari server TungCab (sumber sama).</div>';
+  const all=DB.master.length,akt=aktifList(),lun=lunasList();
+  const sudah=akt.filter(sudahAngsur).length;
+  let h='<h3>Jumlah nasabah KOPENA Limpung</h3><hr><dl class="kv">';
+  h+='<dt>Rekening aktif</dt><dd class="nums"><b>'+akt.length+'</b></dd>';
+  h+='<dt>Lunas</dt><dd class="nums">'+lun.length+'</dd>';
+  h+='<dt>Total di data</dt><dd class="nums">'+all+'</dd>';
+  h+='<dt>Aktif sudah angsur</dt><dd class="nums" style="color:#1f7a45"><b>'+sudah+'</b></dd>';
+  h+='<dt>Aktif belum angsur</dt><dd class="nums" style="color:#c0392b"><b>'+(akt.length-sudah)+'</b></dd>';
+  h+='<dt>Nasabah unik (nama)</dt><dd class="nums">'+nasabahUnik(akt)+'</dd>';
+  h+='<dt>Outstanding pokok aktif</dt><dd class="nums">'+fmtRpFull(sumOS(akt))+'</dd></dl>';
+  const pd=produkDist(akt),pk=Object.keys(pd).sort((a,b)=>pd[b]-pd[a]);
+  if(pk.length>1)h+='<div class="dim"><b>Per produk:</b> '+esc(pk.slice(0,6).map(k=>k+' ('+pd[k]+')').join(' · '))+'</div>';
+  h+='<div class="dim" style="margin-top:4px">'+esc(angsurSrcLabel())+'</div>';
   return h;
 }
 
 function answerStatistik(){
-  const total=DB.master.length;
-  const sudah=DB.master.filter(m=>m.sudah_angsur===true).length;
-  const belum=total-sudah;
-  const totalOS=DB.master.reduce((s,m)=>s+num(m.saldo),0);
-  const collDist={0:0,1:0,2:0,3:0,4:0,null:0};
-  DB.master.forEach(m=>{
-    if(m.coll==null||m.coll===''){collDist.null++;return}
-    const c=num(m.coll);
-    if(collDist[c]!=null)collDist[c]++;else collDist.null++;
-  });
+  const akt=aktifList(),lun=lunasList();
+  const sudah=akt.filter(sudahAngsur).length;
+  const {d,none}=collDistOf(akt);
   let h='<h3>Rangkuman data 📊</h3><hr><dl class="kv">';
-  h+='<dt>Total rekening</dt><dd class="nums">'+total+'</dd>';
+  h+='<dt>Rekening aktif</dt><dd class="nums">'+akt.length+'</dd>';
+  h+='<dt>Lunas</dt><dd class="nums">'+lun.length+'</dd>';
   h+='<dt>Sudah angsur</dt><dd class="nums">'+sudah+'</dd>';
-  h+='<dt>Belum angsur</dt><dd class="nums">'+belum+'</dd>';
-  h+='<dt>Total outstanding</dt><dd class="nums">'+fmtRpFull(totalOS)+'</dd>';
-  h+='<dt>Coll 0</dt><dd class="nums">'+collDist[0]+'</dd>';
-  h+='<dt>Coll 1</dt><dd class="nums">'+collDist[1]+'</dd>';
-  h+='<dt>Coll 2</dt><dd class="nums">'+collDist[2]+'</dd>';
-  h+='<dt>Coll 3</dt><dd class="nums">'+collDist[3]+'</dd>';
-  h+='<dt>Coll 4</dt><dd class="nums">'+collDist[4]+'</dd>';
-  h+='<dt>Tanpa Coll</dt><dd class="nums">'+collDist.null+'</dd>';
-  h+='<dt>Total kunjungan (BK)</dt><dd class="nums">'+DB.bk.length+'</dd>';
-  h+='<dt>Total laporan (MK)</dt><dd class="nums">'+DB.mk.length+'</dd>';
-  h+='</dl>';
+  h+='<dt>Belum angsur</dt><dd class="nums">'+(akt.length-sudah)+'</dd>';
+  h+='<dt>Outstanding aktif</dt><dd class="nums">'+fmtRpFull(sumOS(akt))+'</dd>';
+  Object.keys(d).sort((a,b)=>a-b).forEach(k=>{h+='<dt>Coll '+k+'</dt><dd class="nums">'+d[k]+'</dd>'});
+  if(none)h+='<dt>Tanpa Coll</dt><dd class="nums">'+none+'</dd>';
+  h+='<dt>Nasabah di Buku Kunjungan</dt><dd class="nums">'+DB.bk.length+'</dd>';
+  h+='<dt>Laporan marketing</dt><dd class="nums">'+DB.mk.length+'</dd>';
+  h+='</dl><div class="dim">'+esc(angsurSrcLabel())+'</div>';
   return h;
 }
 
 function answerAngsuran(t){
   const s=String(t).toLowerCase();
-  // Cek apakah tanya 1 orang
   const nama=extractName(t);
-  if(nama&&nama.length>=3){
-    const m=findMasterByName(nama)||findMasterRecords(nama,1)[0];
+  if(nama.length>=3){
+    const m=resolveOne(nama);
     if(m){
-      const angsur=m.sudah_angsur===true;
-      const tgl=getFirebaseTimeline(m);
-      const bayarTercatat=tgl.filter(v=>v.sumber==='marketing'&&v.status==='Sudah Bayar');
+      const angsur=sudahAngsur(m);
+      const bayar=getFirebaseTimeline(m).filter(v=>v.sumber==='marketing'&&v.status==='Sudah Bayar');
       let h='<h3>💵 Status angsuran — '+esc(m.nama)+'</h3>';
       h+='<div class="dim nums">'+esc(m.no_rekening)+' · AO: '+esc(m.ao||'-')+'</div><hr>';
-      if(angsur){
-        h+='<div style="background:#e6f4ea;border:1px solid #c6e6d1;color:#1c6b3d;padding:10px 12px;border-radius:10px;margin:8px 0"><b>✓ SUDAH angsur</b></div>';
-      }else{
-        h+='<div style="background:#fbeae7;border:1px solid #f2c8c1;color:#9c3225;padding:10px 12px;border-radius:10px;margin:8px 0"><b>⚠️ BELUM angsur</b></div>';
-      }
+      if(m.lunas)h+=note('<b>✓ LUNAS</b>','ok');
+      else if(angsur)h+=note('<b>✓ SUDAH angsur</b>','ok');
+      else h+=note('<b>⚠️ BELUM angsur</b>','bad');
       h+='<dl class="kv">';
-      if(num(m.angsuran_bulanan))h+='<dt>Angsuran/bln</dt><dd class="nums">'+fmtRpFull(m.angsuran_bulanan)+'</dd>';
-      if(num(m.pembayaran_pokok))h+='<dt>Bayar pokok</dt><dd class="nums">'+fmtRpFull(m.pembayaran_pokok)+'</dd>';
-      if(num(m.pembayaran_margin))h+='<dt>Bayar margin</dt><dd class="nums">'+fmtRpFull(m.pembayaran_margin)+'</dd>';
-      if(num(m.saldo))h+='<dt>Sisa OS</dt><dd class="nums">'+fmtRpFull(m.saldo)+'</dd>';
+      if(m.angsuran_bulanan)h+='<dt>Angsuran/bln</dt><dd class="nums">'+fmtRpFull(m.angsuran_bulanan)+'</dd>';
+      if(m.pembayaran_pokok)h+='<dt>Bayar pokok</dt><dd class="nums">'+fmtRpFull(m.pembayaran_pokok)+'</dd>';
+      if(m.pembayaran_margin)h+='<dt>Bayar margin</dt><dd class="nums">'+fmtRpFull(m.pembayaran_margin)+'</dd>';
+      if(m.saldo)h+='<dt>Sisa OS</dt><dd class="nums">'+fmtRpFull(m.saldo)+'</dd>';
       h+='</dl>';
-      if(bayarTercatat.length){
+      if(bayar.length){
         h+='<hr><div class="dim"><b>Laporan setoran tercatat:</b></div><div class="tl">';
-        bayarTercatat.slice(0,5).forEach(v=>{
-          h+='<div class="tl-item"><div class="tl-date">'+esc(fmtTgl(v.tanggal))+'</div><div class="tl-text">'+esc(v.hasil||'-')+'</div></div>';
-        });
+        bayar.slice(0,5).forEach(v=>{h+='<div class="tl-item"><div class="tl-date">'+esc(fmtTgl(v.tanggal))+'</div><div class="tl-text">'+esc(v.hasil||'-')+'</div></div>'});
         h+='</div>';
       }
       return h;
     }
   }
-  // Kalau tidak ada nama → tampilkan yang sudah angsur
-  const sudah=DB.master.filter(m=>m.sudah_angsur===true);
-  const belum=DB.master.filter(m=>m.sudah_angsur!==true);
-  const isBelum=/belum\s+angsur/i.test(s);
-  const list=isBelum?belum:sudah;
-  let h='<h3>'+(isBelum?'Yang belum angsur':'Yang sudah angsur')+' ('+list.length+')</h3><hr>';
-  if(!list.length){
-    h+='<div class="dim">Tidak ada.</div>';
+  const akt=aktifList();
+  const sudah=akt.filter(sudahAngsur);
+  const belum=akt.filter(m=>!sudahAngsur(m));
+  const isBelum=/belum|tidak|gak|nggak|blm/.test(s);
+  const list=(isBelum?belum:sudah).slice();
+  const asked=/(berapa|jumlah|total)/.test(s);
+  let h='<h3>'+(isBelum?'Belum angsur':'Sudah angsur')+': <b>'+list.length+'</b> dari '+akt.length+' rekening aktif</h3><hr>';
+  h+='<dl class="kv"><dt>Sudah angsur</dt><dd class="nums" style="color:#1f7a45">'+sudah.length+'</dd><dt>Belum angsur</dt><dd class="nums" style="color:#c0392b">'+belum.length+'</dd><dt>Lunas (di luar hitungan)</dt><dd class="nums">'+lunasList().length+'</dd></dl>';
+  h+='<div class="dim">'+esc(angsurSrcLabel())+'</div>';
+  if(!asked||list.length<=20){
+    list.sort((a,b)=>b.saldo-a.saldo);
+    if(list.length){h+='<hr>';list.slice(0,20).forEach(m=>{h+=masterCard(m)})}
+    if(list.length>20)h+='<div class="dim">Ditampilkan 20 terbesar dari '+list.length+'.</div>';
+  }else{
+    h+='<div class="dim" style="margin-top:6px">Ketik <code>'+(isBelum?'siapa yang belum angsur':'siapa yang sudah angsur')+'</code> untuk daftar namanya.</div>';
+  }
+  return h;
+}
+
+function answerLunas(t){
+  const nama=extractName(t);
+  const m=nama.length>=3?resolveOne(nama):null;
+  if(m)return masterDetail(m);
+  const lun=lunasList();
+  let h='<h3>Rekening lunas (saldo nol): <b>'+lun.length+'</b></h3><hr>';
+  h+='<div class="dim">Rekening aktif: '+aktifList().length+' · Total di data: '+DB.master.length+'</div>';
+  h+='<div class="dim" style="margin-top:4px">Server TungCab tidak mengirim kolom status lunas. Di sini yang dihitung lunas hanya rekening yang saldo pokok dan saldo total-nya 0. Rekening yang hilang dari file CSV terbaru (ditandai LUNAS di menu Admin TungCab) tidak ikut terhitung karena tidak tersimpan di server.</div>';
+  if(!lun.length){h+=note('Tidak ada rekening bersaldo nol di data server.','warn');return h}
+  lun.slice(0,20).forEach(x=>{h+=masterCard(x)});
+  if(lun.length>20)h+='<div class="dim">Ditampilkan 20 dulu dari '+lun.length+'.</div>';
+  return h;
+}
+
+function answerColl(t){
+  const s=String(t).toLowerCase();
+  const akt=aktifList();
+  let sel=null,label='';
+  const mm=s.match(/\b(?:coll|call|kol)\s*([0-9])\b/);
+  if(mm){sel=[parseInt(mm[1],10)];label='Coll '+mm[1]}
+  else if(/tinggi|macet|bermasalah/.test(s)){sel=[3,4,5];label='Coll tinggi (≥3)'}
+  const {d,none}=collDistOf(akt);
+  let h;
+  if(!sel){
+    h='<h3>Sebaran Coll (rekening aktif)</h3><hr><dl class="kv">';
+    Object.keys(d).sort((a,b)=>a-b).forEach(k=>{h+='<dt>Coll '+k+'</dt><dd class="nums"><b>'+d[k]+'</b></dd>'});
+    if(none)h+='<dt>Tanpa Coll</dt><dd class="nums">'+none+'</dd>';
+    h+='</dl><div class="dim">Total aktif: '+akt.length+'. Tanya <code>coll 3</code> untuk daftar namanya.</div>';
+    if(!Object.keys(d).length)h+=note('Kolom Coll/Call tidak terbaca dari server. Ketik <b>diagnosa</b> untuk cek nama kolomnya.','warn');
     return h;
   }
-  // Urut by saldo terbesar
-  list.sort((a,b)=>num(b.saldo)-num(a.saldo));
-  list.slice(0,20).forEach(m=>{h+=masterCard(m)});
-  if(list.length>20)h+='<div class="dim">Ditampilkan 20 dulu dari '+list.length+'.</div>';
-  h+='<div class="dim" style="margin-top:8px">Total: <b>'+DB.master.length+'</b> rekening · <b>'+sudah.length+'</b> sudah · <b>'+belum.length+'</b> belum</div>';
+  const list=akt.filter(x=>x.coll!=null&&sel.includes(x.coll)).sort((a,b)=>b.saldo-a.saldo);
+  h='<h3>'+esc(label)+': <b>'+list.length+'</b> rekening</h3><hr>';
+  if(!list.length){h+='<div class="dim">Tidak ada.</div>';return h}
+  h+='<div class="dim">Outstanding: <b>'+fmtRpFull(sumOS(list))+'</b></div><hr>';
+  list.slice(0,15).forEach(x=>{h+=masterCard(x)});
+  if(list.length>15)h+='<div class="dim">Masih ada '+(list.length-15)+' lagi.</div>';
+  return h;
+}
+
+function answerAO(t){
+  const akt=aktifList();
+  const aos=[...new Set(akt.map(m=>m.ao).filter(Boolean))];
+  const hit=aos.filter(a=>{const w=norm(t);return w.includes(norm(a))||scoreName(extractName(t),a)>=74});
+  const use=hit.length?hit:aos;
+  let h='<h3>Rekap per AO</h3><hr>';
+  if(!use.length)return h+note('Kolom AO tidak terbaca dari server. Ketik <b>diagnosa</b>.','warn');
+  use.sort().forEach(a=>{
+    const l=akt.filter(m=>m.ao===a),sd=l.filter(sudahAngsur).length;
+    h+='<div class="card" style="cursor:default"><div class="top"><div class="name">'+esc(a)+'</div><div class="rek">'+l.length+' rek</div></div>'+
+      '<div class="badges">'+badge('✓ '+sd+' sudah','green')+badge((l.length-sd)+' belum','grey')+badge('OS '+fmtRp(sumOS(l)),'amber')+'</div></div>';
+  });
   return h;
 }
 
 function answerCari(t){
   const nama=extractName(t);
-  if(!nama){
-    return'<p>Kamu mau cari siapa? Tulis nama nasabah, nomor rekening, atau alamatnya.</p>';
-  }
+  if(!nama)return'<p>Kamu mau cari siapa? Tulis nama nasabah, nomor rekening, atau alamatnya. Atau ketik <code>bantuan</code> untuk contoh pertanyaan.</p>';
   const found=findMasterRecords(nama,8);
-  if(!found.length){
-    return'<p>Waduh, tidak ketemu nasabah dengan nama <b>'+esc(nama)+'</b> 🤔</p><div class="dim">Coba tulis sebagian nama (misal: <code>Rizki</code>) atau nomor rekening.</div>';
-  }
+  if(!found.length)return'<p>Tidak ketemu nasabah dengan nama <b>'+esc(nama)+'</b> 🤔</p><div class="dim">Coba tulis sebagian nama (misal: <code>Rizki</code>) atau nomor rekening.</div>';
   if(found.length===1)return masterDetail(found[0]);
   let h='<h3>Ketemu '+found.length+' nasabah untuk "'+esc(nama)+'"</h3>';
   found.slice(0,12).forEach(m=>{h+=masterCard(m)});
@@ -573,148 +702,377 @@ function answerCari(t){
 
 function answerRiwayat(t){
   const nama=extractName(t);
-  if(!nama)return'<p>Sebutin nama nasabahnya dulu ya. Contoh: <code>riwayat Surip</code></p>';
-  const m=findMasterByName(nama)||findMasterRecords(nama,1)[0];
+  if(!nama)return'<p>Sebutkan nama nasabahnya dulu ya. Contoh: <code>riwayat Surip</code></p>';
+  const m=resolveOne(nama);
   if(!m)return'<p>Tidak nemu nasabah <b>'+esc(nama)+'</b>.</p>';
   const tl=getFirebaseTimeline(m);
-  let h='<h3>Riwayat kunjungan — '+esc(m.nama)+'</h3>';
-  h+='<div class="dim nums">'+esc(m.no_rekening)+' · AO: '+esc(m.ao||'-')+'</div><hr>';
-  if(!tl.length){
-    h+='<div style="background:#fbeae7;border:1px solid #f2c8c1;color:#9c3225;padding:10px 12px;border-radius:10px;margin:8px 0">Belum ada catatan kunjungan.</div>';
-  } else {
-    h+='<div class="dim" style="margin-bottom:6px">Total '+tl.length+'×:</div><div class="tl">';
-    tl.slice(0,15).forEach(v=>{
-      h+='<div class="tl-item"><div class="tl-date">'+esc(fmtTgl(v.tanggal))+
-        (v.status?' · <span style="color:'+(v.status==='Sudah Bayar'?'#1f7a45':v.status==='Janji Bayar'?'#b5842a':'#c0392b')+'">'+esc(v.status)+'</span>':'')+
-        (v.sumber==='buku'?' · 📖':' · 📋')+'</div>'+
-        '<div class="tl-text">'+esc(v.hasil||'(tanpa catatan)')+'</div>'+
-        (v.ao?'<div class="tl-meta">AO: '+esc(v.ao)+'</div>':'')+
-        (v.lokasi&&v.lokasi.lat?'<div class="tl-meta"><a href="'+mapsCoord(v.lokasi.lat,v.lokasi.lng)+'" target="_blank" rel="noopener">📍 Lokasi</a></div>':'')+
-        renderFotoStrip(v.fotos,false)+'</div>';
-    });
-    h+='</div>';
-  }
-  return h;
+  let h='<h3>Riwayat kunjungan — '+esc(m.nama)+'</h3><div class="dim nums">'+esc(m.no_rekening)+' · AO: '+esc(m.ao||'-')+'</div><hr>';
+  if(!tl.length)return h+note('Belum ada catatan kunjungan.','bad');
+  h+='<div class="dim" style="margin-bottom:6px">Total '+tl.length+'×:</div><div class="tl">';
+  tl.slice(0,15).forEach(v=>{
+    h+='<div class="tl-item"><div class="tl-date">'+esc(fmtTgl(v.tanggal))+
+      (v.status?' · <span style="color:'+(v.status==='Sudah Bayar'?'#1f7a45':v.status==='Janji Bayar'?'#b5842a':'#c0392b')+'">'+esc(v.status)+'</span>':'')+
+      (v.sumber==='buku'?' · 📖':' · 📋')+'</div><div class="tl-text">'+esc(v.hasil||'(tanpa catatan)')+'</div>'+
+      (v.ao?'<div class="tl-meta">AO: '+esc(v.ao)+'</div>':'')+
+      (v.lokasi&&v.lokasi.lat?'<div class="tl-meta"><a href="'+mapsCoord(v.lokasi.lat,v.lokasi.lng)+'" target="_blank" rel="noopener">📍 Lokasi</a></div>':'')+
+      renderFotoStrip(v.fotos,false)+'</div>';
+  });
+  return h+'</div>';
 }
 
 function answerFoto(t){
   const nama=extractName(t);
-  if(nama&&nama.length>=3){
-    const m=findMasterByName(nama)||findMasterRecords(nama,1)[0];
+  if(nama.length>=3){
+    const m=resolveOne(nama);
     if(m){
       const tl=getFirebaseTimeline(m).filter(v=>v.fotos&&v.fotos.length);
       let h='<h3>📷 Foto Kunjungan — '+esc(m.nama)+'</h3>';
-      if(!tl.length){h+='<hr><div class="dim">Belum ada foto kunjungan untuk nasabah ini.</div>';return h}
+      if(!tl.length)return h+'<hr><div class="dim">Belum ada foto kunjungan untuk nasabah ini.</div>';
       h+='<div class="dim">'+tl.length+' kunjungan dengan foto.</div><hr>';
       tl.forEach(v=>{
-        h+='<div class="photo-block"><div class="pb-head"><b>'+esc(fmtTgl(v.tanggal))+'</b>'+
-          (v.ao?' · '+esc(v.ao):'')+(v.status?' · '+esc(v.status):'')+
-          (v.hasil?'<br>'+esc(v.hasil.slice(0,120)):'')+'</div>'+
-          renderFotoStrip(v.fotos,true)+'</div>';
+        h+='<div class="photo-block"><div class="pb-head"><b>'+esc(fmtTgl(v.tanggal))+'</b>'+(v.ao?' · '+esc(v.ao):'')+(v.status?' · '+esc(v.status):'')+(v.hasil?'<br>'+esc(v.hasil.slice(0,120)):'')+'</div>'+renderFotoStrip(v.fotos,true)+'</div>';
       });
       return h;
     }
   }
-  // Foto terbaru dari semua
   const all=[];
   DB.bk.forEach(n=>{
     const det=DB.bkDetail[n.id];
-    if(det){
-      toArray(det.kunjungan).forEach(v=>{
-        if(v&&!v.deletedAt&&extractFotos(v).length){
-          all.push({nama:n.nama,tanggal:v.tanggal||'',hasil:v.hasil||'',fotos:extractFotos(v),ao:n.ao||''});
-        }
-      });
-    }
+    if(det)toArray(det.kunjungan).forEach(v=>{
+      if(v&&!v.deletedAt&&extractFotos(v).length)all.push({nama:n.nama,tanggal:v.tanggal||'',hasil:v.hasil||'',fotos:extractFotos(v),ao:n.ao||''});
+    });
   });
+  DB.mk.forEach(r=>{const f=extractFotos(r);if(f.length)all.push({nama:r.debitur||'',tanggal:r.tanggal||'',hasil:r.hasil||'',fotos:f,ao:r.ao||''})});
   all.sort((a,b)=>(b.tanggal||'').localeCompare(a.tanggal||''));
   let h='<h3>📷 Foto Kunjungan Terbaru</h3>';
-  if(!all.length){h+='<hr><div class="dim">Belum ada foto.</div>';return h}
+  if(!all.length)return h+'<hr><div class="dim">Belum ada foto.</div>';
   h+='<div class="dim">'+all.length+' kunjungan dengan foto.</div><hr>';
-  all.slice(0,10).forEach(v=>{
-    h+='<div class="photo-block"><div class="pb-head"><b>'+esc(v.nama)+'</b> · '+esc(fmtTgl(v.tanggal))+(v.ao?' · '+esc(v.ao):'')+'</div>'+renderFotoStrip(v.fotos,true)+'</div>';
-  });
+  all.slice(0,10).forEach(v=>{h+='<div class="photo-block"><div class="pb-head"><b>'+esc(v.nama)+'</b> · '+esc(fmtTgl(v.tanggal))+(v.ao?' · '+esc(v.ao):'')+'</div>'+renderFotoStrip(v.fotos,true)+'</div>'});
   return h;
 }
 
 function answerBelumDikunjungi(t){
-  // Ambil dari master, cek mana yang tidak muncul di BK/MK
-  const visited=new Set();
-  DB.bk.forEach(n=>{if(n.nama)visited.add(normNama(n.nama))});
-  DB.mk.forEach(r=>{if(r.debitur)visited.add(normNama(r.debitur))});
-  const list=DB.master.filter(m=>!visited.has(normNama(m.nama)));
-  let h='<h3>Belum pernah dikunjungi ('+list.length+')</h3><hr>';
-  if(!list.length){
-    h+='<div style="background:#e6f4ea;border:1px solid #c6e6d1;color:#1c6b3d;padding:10px 12px;border-radius:10px;margin:8px 0">🎉 Semua nasabah sudah pernah dicatat kunjungan!</div>';
-    return h;
-  }
-  list.sort((a,b)=>num(b.saldo)-num(a.saldo));
+  // Hanya yang BENAR-BENAR punya catatan kunjungan yang dihitung "sudah dikunjungi"
+  const rekV=new Set(),namaV=new Set();
+  DB.bk.forEach(n=>{
+    const det=DB.bkDetail[n.id];
+    const ada=det&&toArray(det.kunjungan).some(v=>v&&!v.deletedAt);
+    if(!ada)return;
+    if(n.rekPembiayaan)rekV.add(String(n.rekPembiayaan).trim());
+    if(n.rekSimpanan)rekV.add(String(n.rekSimpanan).trim());
+    if(n.nama)namaV.add(normNama(n.nama));
+  });
+  DB.mk.forEach(r=>{if(r.norek)rekV.add(String(r.norek).trim());if(r.debitur)namaV.add(normNama(r.debitur))});
+  const akt=aktifList();
+  const list=akt.filter(m=>!(m.no_rekening&&rekV.has(m.no_rekening))&&!namaV.has(normNama(m.nama)));
+  let h='<h3>Belum pernah dikunjungi: <b>'+list.length+'</b> dari '+akt.length+' aktif</h3><hr>';
+  if(!DB.ready.bk||!DB.ready.mk)h+=note('Data kunjungan/laporan belum selesai dimuat, hasil bisa belum lengkap.','warn');
+  if(!list.length)return h+note('🎉 Semua nasabah aktif sudah pernah dicatat kunjungannya!','ok');
+  list.sort((a,b)=>b.saldo-a.saldo);
   list.slice(0,15).forEach(m=>{h+=masterCard(m)});
-  if(list.length>15)h+='<div class="dim">Masih ada '+(list.length-15)+' lagi.</div>';
+  if(list.length>15)h+='<div class="dim">Masih ada '+(list.length-15)+' lagi (diurutkan OS terbesar).</div>';
   return h;
 }
 
 function answerJanjiBayar(t){
-  const list=DB.mk.filter(r=>r.status==='Janji Bayar');
+  // Ambil laporan TERAKHIR per debitur; hanya yang status terakhirnya Janji Bayar
+  const latest={};
+  DB.mk.forEach(r=>{
+    const k=String(r.norek||'').trim()||normNama(r.debitur||'');
+    if(!k)return;
+    const cur=latest[k];
+    const a=(r.tanggal||'')+'|'+(r.createdAt||0);
+    if(!cur||a>((cur.tanggal||'')+'|'+(cur.createdAt||0)))latest[k]=r;
+  });
+  const list=Object.values(latest).filter(r=>r.status==='Janji Bayar');
   const today=todayISO();
   list.sort((a,b)=>(a.target||'9999').localeCompare(b.target||'9999'));
-  let h='<h3>Janji bayar ('+list.length+')</h3><hr>';
-  if(!list.length){h+='<div class="dim">Belum ada catatan janji bayar.</div>';return h}
+  let h='<h3>Janji bayar aktif: <b>'+list.length+'</b></h3><div class="dim">Hanya yang laporan terakhirnya masih "Janji Bayar".</div><hr>';
+  if(!list.length)return h+'<div class="dim">Tidak ada janji bayar yang masih menunggu.</div>';
   list.slice(0,20).forEach(r=>{
     const lewat=r.target&&r.target<today;
-    h+='<div class="card" data-rek="'+esc(r.norek||'')+'"><div class="top"><div class="name">'+esc(r.debitur)+'</div><div class="rek">'+esc(r.norek||'')+'</div></div>'+
-      '<div class="line">'+esc(r.hasil||'-')+'</div>'+
-      '<div class="badges">'+
-      (r.target?badge((lewat?'🔴 Udah lewat ':'🎯 Target ')+fmtTgl(r.target),lewat?'red':'amber'):badge('Tanpa target','grey'))+
-      badge('Dicatat '+fmtTgl(r.tanggal),'grey')+
-      (r.ao?badge(r.ao,''):'')+
-      '</div></div>';
+    h+='<div class="card" data-rek="'+esc(r.norek||'')+'" data-nama="'+esc(r.debitur||'')+'"><div class="top"><div class="name">'+esc(r.debitur)+'</div><div class="rek">'+esc(r.norek||'')+'</div></div>'+
+      '<div class="line">'+esc(r.hasil||'-')+'</div><div class="badges">'+
+      (r.target?badge((lewat?'🔴 Lewat ':'🎯 Target ')+fmtTgl(r.target),lewat?'red':'amber'):badge('Tanpa target','grey'))+
+      badge('Dicatat '+fmtTgl(r.tanggal),'grey')+(r.ao?badge(r.ao,''):'')+'</div></div>';
   });
   if(list.length>20)h+='<div class="dim">Ditampilkan 20 dulu dari '+list.length+'.</div>';
   return h;
 }
 
 function answerTunggakan(){
-  const list=DB.master.filter(m=>num(m.saldo)>0).sort((a,b)=>num(b.saldo)-num(a.saldo));
-  const total=list.reduce((s,m)=>s+num(m.saldo),0);
-  let h='<h3>Outstanding terbesar</h3><hr>';
-  h+='<div style="background:#e6f4ea;border:1px solid #c6e6d1;color:#1c6b3d;padding:10px 12px;border-radius:10px;margin:8px 0">💰 Total outstanding: <b>'+fmtRpFull(total)+'</b></div>';
+  const list=aktifList().filter(m=>m.saldo>0).sort((a,b)=>b.saldo-a.saldo);
+  let h='<h3>Outstanding terbesar</h3><hr>'+note('💰 Total outstanding aktif: <b>'+fmtRpFull(sumOS(list))+'</b> ('+list.length+' rekening)','ok');
   list.slice(0,15).forEach(m=>{h+=masterCard(m)});
   if(list.length>15)h+='<div class="dim">Masih ada '+(list.length-15)+' lagi.</div>';
   return h;
 }
 
-function answerColl(t){
-  const m=String(t).match(/coll\s*([0-9])/i);
-  if(!m)return answerStatistik();
-  const coll=parseInt(m[1],10);
-  const list=DB.master.filter(x=>num(x.coll)===coll);
-  const total=list.reduce((s,x)=>s+num(x.saldo),0);
-  let h='<h3>Nasabah Coll '+coll+' ('+list.length+')</h3><hr>';
-  if(!list.length){h+='<div class="dim">Tidak ada.</div>';return h}
-  h+='<div class="dim">Total outstanding: <b>'+fmtRpFull(total)+'</b></div><hr>';
-  list.sort((a,b)=>num(b.saldo)-num(a.saldo));
-  list.slice(0,15).forEach(x=>{h+=masterCard(x)});
-  if(list.length>15)h+='<div class="dim">Masih ada '+(list.length-15)+' lagi.</div>';
+function answerDiagnosa(){
+  let h='<h3>🔧 Diagnosa data</h3><hr>';
+  if(DB.masterErr)h+=note('Gagal ambil master: <b>'+esc(DB.masterErr)+'</b>','bad');
+  h+='<dl class="kv"><dt>Baris dari server</dt><dd class="nums">'+DB.rawRows.length+'</dd>'+
+    '<dt>Terbaca sebagai nasabah</dt><dd class="nums">'+DB.master.length+'</dd>'+
+    '<dt>Aktif / Lunas</dt><dd class="nums">'+aktifList().length+' / '+lunasList().length+'</dd>'+
+    '<dt>Buku Kunjungan</dt><dd class="nums">'+DB.bk.length+' nasabah</dd>'+
+    '<dt>Laporan marketing</dt><dd class="nums">'+DB.mk.length+'</dd></dl>';
+  if(DB.rawRows.length){
+    const keys=Object.keys(DB.rawRows[0]);
+    const pd=produkDist(DB.master);
+    h+='<hr><div class="dim"><b>Per produk:</b> '+esc(Object.keys(pd).sort((a,b)=>pd[b]-pd[a]).map(k=>k+'='+pd[k]).join(', '))+'</div>';
+    h+='<div class="dim" style="margin-top:4px"><b>Nasabah unik:</b> '+nasabahUnik(DB.master)+' · <b>Saldo nol:</b> '+DB.master.filter(m=>m.saldo_nol).length+'</div>';
+    h+='<hr><div class="dim"><b>Nama kolom dari server:</b></div><pre>'+esc(keys.join(', '))+'</pre>';
+    const ex=Object.assign({},DB.rawRows[0]);
+    h+='<div class="dim"><b>Contoh 1 baris mentah:</b></div><pre>'+esc(JSON.stringify(ex,null,1).slice(0,700))+'</pre>';
+    const m0=DB.master[0];
+    if(m0){
+      h+='<div class="dim"><b>Hasil terbaca baris pertama:</b></div><pre>'+esc(JSON.stringify({nama:m0.nama,no_rekening:m0.no_rekening,ao:m0.ao,coll:m0.coll,saldo:m0.saldo,status:m0.status,lunas:m0.lunas,sudah_angsur_server:m0.sudah_angsur},null,1))+'</pre>';
+    }
+    const stat={};DB.master.forEach(m=>{const k=m.status||'(kosong)';stat[k]=(stat[k]||0)+1});
+    h+='<div class="dim"><b>Nilai Status:</b> '+esc(Object.entries(stat).map(e=>e[0]+'='+e[1]).join(', '))+'</div>';
+    const {d,none}=collDistOf(DB.master);
+    h+='<div class="dim" style="margin-top:4px"><b>Sebaran Coll:</b> '+esc(Object.keys(d).sort((a,b)=>a-b).map(k=>k+'='+d[k]).join(', ')||'tidak terbaca')+(none?' · tanpa coll='+none:'')+'</div>';
+    const sa={t:0,f:0,n:0};DB.master.forEach(m=>{if(m.sudah_angsur===true)sa.t++;else if(m.sudah_angsur===false)sa.f++;else sa.n++});
+    h+='<div class="dim" style="margin-top:4px"><b>Kolom status angsur dari server:</b> ya='+sa.t+', tidak='+sa.f+', tidak ada='+sa.n+'</div>';
+    h+='<div class="dim" style="margin-top:4px">'+esc(angsurSrcLabel())+'</div>';
+  }
+  const ms={};DB.mk.forEach(r=>{const k=r.status||'(kosong)';ms[k]=(ms[k]||0)+1});
+  if(DB.mk.length)h+='<div class="dim" style="margin-top:4px"><b>Status laporan marketing:</b> '+esc(Object.entries(ms).map(e=>e[0]+'='+e[1]).join(', '))+'</div>';
   return h;
 }
 
 /* ============ DISPATCHER ============ */
 function buildAnswer(text){
-  const intent=detectIntent(text);
-  switch(intent){
+  switch(detectIntent(text)){
+    case 'diagnosa':return answerDiagnosa();
+    case 'catatan':return answerCatatan(text);
+    case 'ingat':return'<p>Tulis isinya, contoh: <code>ingat bahwa Pak Surip janji bayar tanggal 20</code></p>';
     case 'sapaan':return answerSapaan(text);
     case 'bantuan':return answerBantuan();
     case 'total':return answerTotal();
     case 'statistik':return answerStatistik();
     case 'angsuran':return answerAngsuran(text);
+    case 'lunas':return answerLunas(text);
+    case 'coll':return answerColl(text);
+    case 'ao':return answerAO(text);
     case 'janji':return answerJanjiBayar(text);
     case 'belum':return answerBelumDikunjungi(text);
     case 'foto':return answerFoto(text);
     case 'riwayat':return answerRiwayat(text);
     case 'tunggakan':return answerTunggakan();
-    case 'coll':return answerColl(text);
     default:return answerCari(text);
+  }
+}
+
+/* ============ MEMORI BERSAMA (catatan tim di Firebase) ============ */
+const MEM_PATH='tanya-kopena/catatan';
+let NOTES=[],memShared=null,memListening=false;
+function lsGet(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function getUser(){try{return localStorage.getItem('kopena_user')||''}catch(e){return''}}
+function askUser(){
+  let u=getUser();if(u)return u;
+  const v=prompt('Siapa namamu? Nama ini dicantumkan di catatan yang kamu simpan, supaya teman kantor tahu siapa yang mencatat:','');
+  u=(v||'').trim()||'Tanpa nama';
+  try{localStorage.setItem('kopena_user',u)}catch(e){}
+  return u;
+}
+function tsISO(ts){const d=new Date(ts);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function allNotes(){return NOTES.concat(lsGet('kopena_notes_local',[])).sort((a,b)=>(b.ts||0)-(a.ts||0))}
+function listenMem(){
+  if(!bkDb||memListening)return;
+  memListening=true;
+  bkDb.ref(MEM_PATH).on('value',snap=>{
+    const v=snap.val()||{};
+    NOTES=Object.entries(v).map(([id,n])=>Object.assign({},n,{id:id}));
+    memShared=true;updateStatus();
+  },err=>{memShared=false;console.warn('MEM',err);updateStatus()});
+}
+async function saveNote(teks,nama,rek){
+  const n={teks:teks,nama:nama||'',rek:rek||'',oleh:askUser(),ts:Date.now()};
+  try{
+    if(!bkDb)throw new Error('Firebase tidak tersedia');
+    const p=bkDb.ref(MEM_PATH).push(n);
+    await Promise.race([p,new Promise(r=>setTimeout(()=>r('t'),6000))]);
+    memShared=true;
+    return{shared:true};
+  }catch(e){
+    console.warn('saveNote',e);
+    memShared=false;
+    const loc=lsGet('kopena_notes_local',[]);
+    n.id='L'+n.ts;n.local=true;loc.push(n);lsSet('kopena_notes_local',loc);
+    return{shared:false};
+  }
+}
+async function deleteNote(id){
+  if(String(id).startsWith('L')){lsSet('kopena_notes_local',lsGet('kopena_notes_local',[]).filter(n=>n.id!==id));return}
+  try{await bkDb.ref(MEM_PATH+'/'+id).remove()}catch(e){console.warn(e)}
+}
+function noteMatchesMaster(n,m){
+  if(n.rek&&m.no_rekening&&n.rek===m.no_rekening)return true;
+  const k=normNama(m.nama);
+  if(k.length<4)return false;
+  return normNama((n.nama||'')+' '+(n.teks||'')).includes(k);
+}
+function notesFor(m){return allNotes().filter(n=>noteMatchesMaster(n,m))}
+function noteCard(n){
+  return'<div class="tl-item"><div class="tl-date">'+esc(fmtTgl(tsISO(n.ts||0)))+' · '+esc(n.oleh||'-')+(n.local?' · 📱 hanya di HP ini':'')+
+    '<button class="note-del" data-id="'+esc(n.id)+'">Hapus</button></div><div class="tl-text">'+esc(n.teks||'')+'</div></div>';
+}
+function detectMasterIn(text){
+  const t=normNama(text);
+  let best=null;
+  DB.master.forEach(m=>{const k=normNama(m.nama);if(k.length>=4&&t.includes(k)&&(!best||k.length>normNama(best.nama).length))best=m});
+  if(best)return best;
+  const toks=[...new Set(t.split(' ').filter(w=>w.length>=4&&!STOP.has(w.toLowerCase())))];
+  for(const w of toks){
+    const hit=DB.master.filter(m=>normNama(m.nama).split(' ').includes(w));
+    if(hit.length===1)return hit[0];
+  }
+  return null;
+}
+async function answerIngat(teks,namaHint){
+  teks=String(teks||'').trim();
+  if(teks.length<3)return'<p>Tulis isinya, contoh: <code>ingat bahwa Pak Surip janji bayar tanggal 20</code></p>';
+  let m=namaHint?resolveOne(String(namaHint)):null;
+  if(!m)m=detectMasterIn(teks);
+  const r=await saveNote(teks,m?m.nama:'',m?m.no_rekening:'');
+  let h=note('✓ <b>Dicatat.</b>'+(r.shared?' Teman kantor juga bisa melihatnya.':' Tapi hanya tersimpan di HP ini, karena Firebase menolak penyimpanan bersama (cek aturan/Rules database).'),r.shared?'ok':'warn');
+  h+='<div class="dim">'+esc(teks)+'</div>';
+  if(m)h+='<div class="dim" style="margin-top:6px">Dikaitkan ke nasabah <b>'+esc(m.nama)+'</b> — akan muncul di detailnya. Salah orang? Tekan Hapus di <code>lihat catatan</code> lalu catat ulang dengan nama lengkap.</div>';
+  else h+='<div class="dim" style="margin-top:6px">Tidak ada nama nasabah yang dikenali, jadi dicatat sebagai catatan umum.</div>';
+  return h;
+}
+function answerCatatan(t){
+  const nama=extractName(t);
+  const m=nama.length>=3?resolveOne(nama):null;
+  const list=m?notesFor(m):allNotes();
+  let h='<h3>📝 Catatan tim'+(m?' — '+esc(m.nama):'')+': <b>'+list.length+'</b></h3><hr>';
+  if(memShared===false)h+=note('Penyimpanan bersama sedang tidak tersambung. Catatan baru hanya di HP ini.','warn');
+  if(!list.length)return h+'<div class="dim">Belum ada catatan. Ketik <code>ingat bahwa …</code> untuk menyimpan.</div>';
+  h+='<div class="tl">'+list.slice(0,15).map(noteCard).join('')+'</div>';
+  if(list.length>15)h+='<div class="dim">Ditampilkan 15 terbaru dari '+list.length+'.</div>';
+  return h;
+}
+
+/* ============ AI (Groq) — hanya memahami pertanyaan, angka tetap dihitung kode ============ */
+const GROQ_URL='https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODELS=['openai/gpt-oss-20b','openai/gpt-oss-120b'];
+function getModel(){try{return localStorage.getItem('kopena_ai_model')||GROQ_MODELS[0]}catch(e){return GROQ_MODELS[0]}}
+function setModel(m){try{localStorage.setItem('kopena_ai_model',m)}catch(e){}}
+function getKey(){try{return localStorage.getItem('kopena_ai_key')||''}catch(e){return''}}
+function setKey(k){try{if(k)localStorage.setItem('kopena_ai_key',k);else localStorage.removeItem('kopena_ai_key')}catch(e){}}
+let lastNama=lsGet('kopena_last','')||'',HIST=lsGet('kopena_hist',[]);
+
+function llmSystemPrompt(){
+  const aos=[...new Set(DB.master.map(m=>m.ao).filter(Boolean))].join('; ');
+  return 'Kamu pemroses pertanyaan untuk aplikasi data nasabah koperasi KOPENA Limpung. Tugasmu HANYA mengubah pertanyaan pengguna menjadi satu objek JSON perintah. JANGAN pernah menyebut angka data.\n'+
+  'Format: {"intent":"...","nama":string|null,"belum":boolean,"coll":number|null,"coll_tinggi":boolean,"ao":string|null,"balasan":string|null,"catatan":string|null}\n'+
+  'Intent yang tersedia:\n'+
+  '- cari: profil/data satu nasabah (isi nama)\n'+
+  '- riwayat: riwayat kunjungan/penagihan satu nasabah (isi nama)\n'+
+  '- foto: foto kunjungan (nama opsional)\n'+
+  '- angsuran: sudah/belum angsur atau bayar. belum=true jika menanyakan yang BELUM. Isi nama jika tentang satu orang.\n'+
+  '- lunas: jumlah/daftar rekening lunas\n'+
+  '- coll: kolektibilitas/call. Isi coll (angka) jika disebut; coll_tinggi=true jika menanyakan yang tinggi/bermasalah; tanpa keduanya = sebaran semua coll.\n'+
+  '- total: jumlah nasabah/rekening\n'+
+  '- statistik: rangkuman umum\n'+
+  '- tunggakan: outstanding terbesar\n'+
+  '- janji: janji bayar\n'+
+  '- belum_dikunjungi: yang belum pernah dikunjungi\n'+
+  '- ao: rekap per AO (isi ao persis dari daftar jika menyebut satu AO)\n'+
+  '- ingat: pengguna meminta mencatat/mengingat sesuatu. Isi "catatan" dengan isi yang perlu diingat (kalimat lengkap, sebut nama nasabah di dalamnya) dan isi nama jika ada.\n'+
+  '- catatan: menanyakan catatan/ingatan yang pernah disimpan (isi nama jika tentang satu orang).\n'+
+  '- diagnosa, bantuan\n'+
+  '- ngobrol: sapaan/obrolan di luar data; isi balasan maksimal 2 kalimat Indonesia santai, tanpa angka.\n'+
+  'Jika pengguna menyebut "dia/nya/yang tadi", pakai nama terakhir: '+(lastNama||'(belum ada)')+'.\n'+
+  'Daftar AO: '+(aos||'-')+'\nKeluarkan JSON saja.';
+}
+async function groqPost(key,model,msgs,reason){
+  const body={model:model,messages:msgs,temperature:0,max_tokens:900};
+  if(reason&&/gpt-oss/.test(model))body.reasoning_effort='low';
+  const ctl=new AbortController();const tm=setTimeout(()=>ctl.abort(),20000);
+  try{
+    return await fetch(GROQ_URL,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body)});
+  }finally{clearTimeout(tm)}
+}
+async function pickModel(key,exclude){
+  const res=await fetch('https://api.groq.com/openai/v1/models',{headers:{'Authorization':'Bearer '+key}});
+  if(!res.ok)return null;
+  const j=await res.json();
+  const ids=(j.data||[]).map(m=>m.id).filter(id=>id&&id!==exclude&&!/whisper|orpheus|guard|safeguard|tts|embed|vision/i.test(id));
+  const pref=[/gpt-oss-20b/,/gpt-oss-120b/,/llama-3\.3/,/llama-3\.1/,/qwen/,/llama/];
+  for(const re of pref){const f=ids.find(id=>re.test(id));if(f)return f}
+  return ids[0]||null;
+}
+async function llmRoute(text,key){
+  const msgs=[{role:'system',content:llmSystemPrompt()}];
+  HIST.slice(-6).forEach(h=>{msgs.push({role:'user',content:h.u});msgs.push({role:'assistant',content:h.j})});
+  msgs.push({role:'user',content:text});
+  let model=getModel(),reason=true,res=null,tried=0;
+  while(tried<3){
+    tried++;
+    res=await groqPost(key,model,msgs,reason);
+    if(res.ok)break;
+    if(res.status===401)throw new Error('Kunci AI tidak valid (401)');
+    if(res.status===429)throw new Error('Batas pemakaian AI tercapai (429)');
+    if(res.status===400&&reason){reason=false;continue}
+    if(res.status===404||res.status===400||res.status===403){
+      const alt=await pickModel(key,model);
+      if(alt&&alt!==model){model=alt;continue}
+    }
+    break;
+  }
+  if(!res||!res.ok){
+    let det='';try{const e=await res.json();det=(e.error&&e.error.message)||''}catch(e){}
+    throw new Error('AI error HTTP '+(res?res.status:'?')+(det?': '+det.slice(0,140):'')+' (model: '+model+')');
+  }
+  setModel(model);
+  const data=await res.json();
+  let c=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
+  const i=c.indexOf('{'),k=c.lastIndexOf('}');
+  if(i<0||k<i)throw new Error('AI tidak memberi jawaban yang bisa dibaca');
+  const r=JSON.parse(c.slice(i,k+1));
+  HIST.push({u:text,j:JSON.stringify(r)});if(HIST.length>30)HIST.shift();lsSet('kopena_hist',HIST);
+  return r;
+}
+function routeToCommand(r){
+  const n=r.nama?String(r.nama).trim():'';
+  switch(r.intent){
+    case'cari':return n?'cari '+n:null;
+    case'riwayat':return n?'riwayat '+n:null;
+    case'foto':return n?'foto '+n:'foto';
+    case'angsuran':return n?'angsuran '+n:(r.belum?'yang belum angsur':'berapa nasabah sudah angsur');
+    case'lunas':return n?'lunas '+n:'berapa yang lunas';
+    case'coll':return r.coll!=null&&r.coll!==''?'coll '+parseInt(r.coll,10):(r.coll_tinggi?'coll tinggi':'sebaran coll');
+    case'total':return'jumlah nasabah';
+    case'statistik':return'rangkum data';
+    case'tunggakan':return'tunggakan terbesar';
+    case'janji':return'janji bayar';
+    case'belum_dikunjungi':return'siapa yang belum dikunjungi';
+    case'ao':return'rekap per AO '+(r.ao||'');
+    case'catatan':return n?'catatan '+n:'lihat catatan';
+    case'diagnosa':return'diagnosa';
+    case'bantuan':return'bantuan';
+  }
+  return null;
+}
+async function answerSmart(text){
+  const mi=text.match(/^\s*(?:tolong\s+)?(?:ingat|catat)(?:kan)?\s*(?:bahwa|ya|:|,)?\s+([\s\S]+)$/i);
+  if(mi)return await answerIngat(mi[1],null);
+  const key=getKey();
+  if(!key)return buildAnswer(text);
+  try{
+    const r=await llmRoute(text,key);
+    if(r.nama){lastNama=String(r.nama);lsSet('kopena_last',lastNama)}
+    if(r.intent==='ingat')return await answerIngat(r.catatan||text,r.nama);
+    if(r.intent==='ngobrol'&&r.balasan)return'<p>'+esc(r.balasan)+'</p>';
+    const cmd=routeToCommand(r);
+    if(!cmd)return buildAnswer(text);
+    return buildAnswer(cmd);
+  }catch(e){
+    console.warn('AI',e);
+    return note('AI tidak bisa dipakai ('+esc(e.message||e)+'). Memakai mode dasar.','warn')+buildAnswer(text);
   }
 }
 
@@ -728,14 +1086,14 @@ function addAiMsg(html){const d=document.createElement('div');d.className='msg a
 function addTyping(){const d=document.createElement('div');d.className='msg ai';d.id='typing';d.innerHTML='<div class="avatar">TK</div><div class="bubble"><div class="typing"><i></i><i></i><i></i></div></div>';chatEl.appendChild(d);scrollBottom()}
 function removeTyping(){const t=$('#typing');if(t)t.remove()}
 
-const CHIPS=['Berapa nasabah sudah angsur?','Siapa yang belum dikunjungi?','Ada yang janji bayar?','Tunggakan terbesar','Rangkum data kita'];
+const CHIPS=['Berapa nasabah sudah angsur?','Yang belum angsur','Berapa yang lunas?','Sebaran Coll','Siapa yang belum dikunjungi?','Ada yang janji bayar?','Rekap per AO','Tunggakan terbesar','Lihat catatan tim','Diagnosa'];
 
 function renderChips(){
   chipsEl.innerHTML='';
   CHIPS.forEach(t=>{
     const b=document.createElement('button');
     b.type='button';b.className='chip';b.textContent=t;
-    b.addEventListener('click',()=>{inputEl.value=t;ask(t)});
+    b.addEventListener('click',()=>{ask(t)});
     chipsEl.appendChild(b);
   });
 }
@@ -745,22 +1103,20 @@ async function ask(text){
   if(!text||busy)return;
   busy=true;sendBtn.disabled=true;inputEl.value='';
   addUserMsg(text);addTyping();
-
-  // delay biar responsif
   await new Promise(r=>setTimeout(r,250));
-
   let html='';
   try{
-    if(!DB.ready.master&&DB.master.length===0){
-      html='<div style="background:#fbf3e2;border:1px solid #f0d888;color:#7a5c00;padding:10px 12px;border-radius:10px">Sedang memuat data dari server… Tunggu sebentar lalu tanya lagi.</div>';
+    if(DB.master.length===0){
+      html=DB.masterErr
+        ?note('Data master gagal dimuat: <b>'+esc(DB.masterErr)+'</b><br>Tekan ⟳ untuk coba lagi.','bad')
+        :note('Sedang memuat data dari server… Tunggu sebentar lalu tanya lagi.','warn');
     } else {
-      html=buildAnswer(text);
+      html=await answerSmart(text);
     }
   }catch(e){
     console.error(e);
-    html='<div style="background:#fbeae7;border:1px solid #f2c8c1;color:#9c3225;padding:10px 12px;border-radius:10px">Error: '+esc(e.message)+'</div>';
+    html=note('Error: '+esc(e.message),'bad');
   }
-
   removeTyping();
   addAiMsg(html);
   busy=false;sendBtn.disabled=false;inputEl.focus();
@@ -770,25 +1126,40 @@ async function ask(text){
 chatEl.addEventListener('click',e=>{
   const card=e.target.closest('.card[data-rek]');
   if(card){
-    const m=findMasterByRek(card.dataset.rek);
+    const m=findMasterByRek(card.dataset.rek)||findMasterByName(card.dataset.nama);
     if(m){addUserMsg('Detail '+m.nama);addAiMsg(masterDetail(m))}
   }
 });
-
 $('#composer').addEventListener('submit',e=>{e.preventDefault();ask(inputEl.value)});
-
 $('#btnClearChat').addEventListener('click',()=>{
   if(!confirm('Mulai obrolan baru?'))return;
-  chatEl.innerHTML='';greet();
+  chatEl.innerHTML='';HIST=[];lastNama='';lsSet('kopena_hist',[]);lsSet('kopena_last','');greet();
 });
-
-$('#btnReload').addEventListener('click',()=>{
+$('#btnReload').addEventListener('click',async()=>{
   addAiMsg('<div class="dim">Memuat ulang data…</div>');
-  fetchMaster();listenBK();listenMK();
-  setTimeout(()=>addAiMsg('<div style="background:#e6f4ea;border:1px solid #c6e6d1;color:#1c6b3d;padding:10px 12px;border-radius:10px">✓ Data dimuat ulang. '+DB.master.length+' rekening siap.</div>'),1200);
+  await fetchMaster();
+  addAiMsg(DB.masterErr&&!DB.master.length
+    ?note('Gagal: '+esc(DB.masterErr),'bad')
+    :note('✓ Data dimuat ulang. '+DB.master.length+' rekening siap.','ok'));
 });
 
-/* ============ VOICE ============ */
+chatEl.addEventListener('click',async e=>{
+  const b=e.target.closest('.note-del');if(!b)return;
+  e.stopPropagation();
+  if(!confirm('Hapus catatan ini untuk semua orang?'))return;
+  await deleteNote(b.dataset.id);
+  const it=b.closest('.tl-item');if(it)it.remove();
+});
+$('#btnKey').addEventListener('click',()=>{
+  const cur=getKey();
+  const v=prompt(cur?'Kunci AI sudah tersimpan. Tempel kunci baru, atau kosongkan untuk menghapus:':'Tempel kunci API Groq (awalan gsk_). Hanya tersimpan di HP ini:','');
+  if(v===null)return;
+  setKey(v.trim());
+  updateStatus();
+  addAiMsg(v.trim()?note('🤖 Mode AI aktif. Sekarang boleh tanya dengan kalimat bebas.','ok'):note('Kunci AI dihapus. Kembali ke mode dasar.','warn'));
+});
+
+/* ============ SUARA ============ */
 let recog=null,recording=false;
 const micBtn=$('#btnMic');
 function initSpeech(){
@@ -806,23 +1177,23 @@ micBtn.addEventListener('click',()=>{
   try{recog.start();recording=true;micBtn.classList.add('rec')}catch(e){recording=false;micBtn.classList.remove('rec')}
 });
 
-/* ============ GREET & START ============ */
+/* ============ MULAI ============ */
 function greet(){
   const jam=new Date().getHours();
   const sap=jam<11?'Pagi':jam<15?'Siang':jam<18?'Sore':'Malam';
   addAiMsg('<h3>'+sap+'! 👋 Aku Tanya KOPENA</h3>'+
     '<p>Aku bisa cari data nasabah, lihat riwayat kunjungan, foto, dan status angsuran.</p>'+
-    '<div class="dim">Contoh: <code>cari Surip</code> · <code>berapa nasabah sudah angsur?</code> · <code>siapa yang belum dikunjungi?</code> · <code>foto kunjungan Surip</code></div>');
+    '<div class="dim">Contoh: <code>cari Surip</code> · <code>berapa nasabah sudah angsur?</code> · <code>sebaran Coll</code> · <code>berapa yang lunas?</code></div>');
 }
-
 renderChips();
 greet();
 listenBK();
 listenMK();
+listenMem();
 fetchMaster();
 initSpeech();
 setInterval(updateStatus,5000);
-setInterval(fetchMaster,5*60*1000); // refresh master tiap 5 menit
+setInterval(fetchMaster,5*60*1000);
 </script>
 </body>
 </html>
