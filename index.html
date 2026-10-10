@@ -571,6 +571,10 @@ function detectIntent(t){
   if(/(total|jumlah|berapa).*(nasabah|rekening|anggota)/.test(s))return'total';
   if(has('rangkum','statistik','ringkasan'))return'statistik';
   if(has('tunggakan','outstanding','terbesar','piutang','os terbesar'))return'tunggakan';
+  if(has('prioritas harian','prioritas hari ini','fokus hari ini','prioritas kunjungan','siapa yang prioritas'))return'prioritas';
+  if(has('siap kunjungan','siapkan kunjungan','persiapan kunjungan','mode kunjungan'))return'siap_kunjungan';
+  if(has('kinerja ao','performa ao','perbandingan ao','bandingkan ao','ranking ao','peringkat ao'))return'kinerja_ao';
+  if(has('ringkas hari ini','ringkasan hari ini','rangkum hari ini','rekap hari ini','siap wa','teks harian','ringkas harian'))return'ringkas_harian';
   if(/\bao\b/.test(s)||has('rekap per ao','per ao'))return'ao';
   if(has('kunjungan'))return'riwayat';
   return'cari';
@@ -596,6 +600,8 @@ function answerBantuan(){
     '<li><b>Siapa yang belum dikunjungi?</b></li>'+
     '<li><b>Riwayat kunjungan Surip</b> · <b>Foto Surip</b></li>'+
     '<li><b>Laporan marketing tanggal 29 September 2026</b></li>'+
+    '<li><b>Prioritas harian</b> · <b>Ringkas hari ini</b> · <b>Kinerja AO</b></li>'+
+    '<li><b>Siap kunjungan Surip</b> — kartu lapangan</li>'+
     '<li><b>Ingatkan aku besok tagih Surip</b> · <b>Pengingat aktif</b></li>'+
     '<li><b>Rekap per AO</b> · <b>Tunggakan terbesar</b> · <b>Janji bayar</b></li>'+
     '<li><b>Diagnosa</b> — cek data mentah dari server</li></ul>';
@@ -1008,7 +1014,13 @@ function renderAlertBar(){
     .filter(a=>!dismissed[a.id])
     .slice(0,8);
   if(!items.length){bar.innerHTML='';return}
-  bar.innerHTML=items.map(a=>{
+  const nOver=items.filter(a=>a.kind==='overdue').length;
+  const nToday=items.filter(a=>a.kind==='today').length;
+  let head='';
+  if(nOver||nToday){
+    head='<div class="alert-item" style="cursor:default;background:#fff3cd;padding:8px 12px"><div class="ai-body"><div class="ai-title" style="font-size:12px">📌 '+nOver+' janji/pengingat lewat'+(nToday?(' · '+nToday+' hari ini'):'')+' · ketuk untuk buka</div></div></div>';
+  }
+  bar.innerHTML=head+items.map(a=>{
     const cls=a.kind==='overdue'?'overdue':(a.type==='custom'?'custom':'today');
     const icon=a.kind==='overdue'?'🔴':(a.kind==='today'?'🟡':'🔔');
     return '<div class="alert-item '+cls+'" data-alert-id="'+esc(a.id)+'" data-nama="'+esc(a.nama||'')+'" data-type="'+esc(a.type)+'">'+
@@ -1026,10 +1038,10 @@ function dismissAlert(id){
 function answerPengingat(t){
   const s=String(t||'').toLowerCase();
   // daftar pengingat
-  if(/daftar|lihat|tampilkan|apa saja|list/.test(s)&&!/ingatkan\s+(aku|saya)/.test(s)){
+  if(/daftar|lihat|tampilkan|apa saja|list|aktif|semua pengingat/.test(s)&&!/ingatkan\s+(aku|saya)\s+/.test(s)){
     const list=loadReminders().filter(r=>!r.done).sort((a,b)=>String(a.tanggal).localeCompare(String(b.tanggal)));
     let h='<h3>🔔 Pengingat aktif: <b>'+list.length+'</b></h3><hr>';
-    if(!list.length)return h+'<div class="dim">Belum ada pengingat. Contoh: <code>ingatkan aku besok tagih Surip</code></div>';
+    if(!list.length)return h+'<div class="dim">Belum ada pengingat kustom. Contoh: <code>ingatkan aku besok tagih Surip</code></div><div class="dim" style="margin-top:6px">Janji bayar dari laporan marketing (lewat / hari ini) muncul otomatis di <b>banner kuning di atas</b> chat.</div>';
     list.forEach(r=>{
       h+='<div class="card" style="cursor:default"><div class="top"><div class="name">'+esc(r.teks)+'</div><div class="rek">'+esc(fmtTgl(r.tanggal))+'</div></div>'+
         (r.nama?'<div class="line">Nasabah: '+esc(r.nama)+'</div>':'')+'</div>';
@@ -1140,6 +1152,244 @@ function answerDiagnosa(){
   return h;
 }
 
+
+/* ============ FITUR 1-4: PRIORITAS, SIAP KUNJUNGAN, KINERJA AO, RINGKAS HARIAN ============ */
+function visitedSets(){
+  const rekV=new Set(),namaV=new Set();
+  const since=addDaysISO(todayISO(),-7);
+  DB.bk.forEach(n=>{
+    const det=DB.bkDetail[n.id];
+    const visits=det?toArray(det.kunjungan).filter(v=>v&&!v.deletedAt):[];
+    const recent=visits.some(v=>String(v.tanggal||'').slice(0,10)>=since);
+    if(!recent&&!visits.length)return;
+    // untuk prioritas: anggap "sudah dikunjungi 7 hari" hanya jika ada kunjungan >= since
+    if(recent){
+      if(n.rekPembiayaan)rekV.add(String(n.rekPembiayaan).trim());
+      if(n.rekSimpanan)rekV.add(String(n.rekSimpanan).trim());
+      if(n.nama)namaV.add(normNama(n.nama));
+    }
+  });
+  DB.mk.forEach(r=>{
+    if(String(r.tanggal||'').slice(0,10)<since)return;
+    if(r.norek)rekV.add(String(r.norek).trim());
+    if(r.debitur)namaV.add(normNama(r.debitur));
+  });
+  return {rekV,namaV};
+}
+function isVisitedRecent(m,sets){
+  if(m.no_rekening&&sets.rekV.has(m.no_rekening))return true;
+  if(m.nama&&sets.namaV.has(normNama(m.nama)))return true;
+  return false;
+}
+function latestJanjiFor(m){
+  const nameKey=normNama(m.nama),rekKey=String(m.no_rekening||'').trim();
+  let best=null;
+  DB.mk.forEach(r=>{
+    if(r.status!=='Janji Bayar')return;
+    const same=(rekKey&&String(r.norek||'').trim()===rekKey)||(nameKey&&normNama(r.debitur||'')===nameKey);
+    if(!same)return;
+    const a=(r.tanggal||'')+'|'+(r.createdAt||0);
+    if(!best||a>((best.tanggal||'')+'|'+(best.createdAt||0)))best=r;
+  });
+  return best;
+}
+function scorePrioritas(m,sets){
+  let sc=0;const reasons=[];
+  if(m.coll!=null&&m.coll>=3){sc+=40;reasons.push('Coll '+m.coll)}
+  else if(m.coll===2){sc+=15;reasons.push('Coll 2')}
+  if(!sudahAngsur(m)&&!m.lunas){sc+=20;reasons.push('Belum angsur')}
+  if(!isVisitedRecent(m,sets)){sc+=25;reasons.push('Belum dikunjungi 7h')}
+  const j=latestJanjiFor(m);
+  const today=todayISO();
+  if(j&&j.target){
+    const tg=String(j.target).slice(0,10);
+    if(tg<today){sc+=35;reasons.push('Janji lewat '+fmtTgl(tg))}
+    else if(tg===today){sc+=30;reasons.push('Janji hari ini')}
+    else if(tg<=addDaysISO(today,2)){sc+=15;reasons.push('Janji '+fmtTgl(tg))}
+  }
+  if(m.saldo>=50e6){sc+=15;reasons.push('OS besar')}
+  else if(m.saldo>=20e6){sc+=8;reasons.push('OS menengah')}
+  return {sc,reasons,janji:j};
+}
+function getPrioritasList(limit){
+  const sets=visitedSets();
+  const akt=aktifList();
+  const scored=akt.map(m=>{
+    const x=scorePrioritas(m,sets);
+    return {m,sc:x.sc,reasons:x.reasons,janji:x.janji};
+  }).filter(x=>x.sc>=25);
+  scored.sort((a,b)=>b.sc-a.sc||b.m.saldo-a.m.saldo);
+  return scored.slice(0,limit||10);
+}
+function answerPrioritas(){
+  const list=getPrioritasList(10);
+  let h='<h3>🎯 Prioritas harian — '+esc(fmtTgl(todayISO()))+'</h3>';
+  h+='<div class="dim">Skor dari Coll tinggi, belum angsur, belum dikunjungi 7 hari, janji bayar, dan OS.</div><hr>';
+  if(!list.length)return h+note('Tidak ada nasabah yang menonjol untuk diprioritaskan hari ini.','ok');
+  list.forEach((x,i)=>{
+    const m=x.m;
+    h+='<div class="card" data-rek="'+esc(m.no_rekening)+'" data-nama="'+esc(m.nama)+'">'+
+      '<div class="top"><div class="name">'+(i+1)+'. '+esc(m.nama)+'</div><div class="rek">skor '+x.sc+'</div></div>'+
+      '<div class="badges">'+
+        (m.coll!=null?badge('Coll '+m.coll,m.coll>=3?'red':'amber'):'')+
+        badge(sudahAngsur(m)?'✓ Angsur':'Belum angsur',sudahAngsur(m)?'green':'grey')+
+        (m.saldo?badge('OS '+fmtRp(m.saldo),'amber'):'')+
+        (m.ao?badge(m.ao,''):'')+
+      '</div>'+
+      '<div class="line">'+esc(x.reasons.join(' · '))+'</div></div>';
+  });
+  h+='<div class="dim" style="margin-top:6px">Ketuk nama untuk detail · ketik <code>siap kunjungan [nama]</code> untuk mode lapangan.</div>';
+  return h;
+}
+
+function answerSiapKunjungan(t){
+  const nama=extractName(t);
+  if(!nama||nama.length<2){
+    // default: top prioritas
+    const top=getPrioritasList(5);
+    let h='<h3>🧭 Siap kunjungan — pilih nasabah</h3><div class="dim">Sebut nama, atau pakai prioritas hari ini:</div><hr>';
+    if(!top.length)return h+note('Tidak ada prioritas. Ketik <code>siap kunjungan NamaNasabah</code>','warn');
+    top.forEach(x=>{h+=masterCard(x.m)});
+    h+='<div class="dim">Ketik <code>siap kunjungan [nama]</code> untuk kartu lengkap lapangan.</div>';
+    return h;
+  }
+  const m=resolveOne(nama);
+  if(!m)return'<p>Tidak nemu nasabah <b>'+esc(nama)+'</b>.</p>';
+  const tl=getFirebaseTimeline(m);
+  const last=tl[0]||null;
+  const j=latestJanjiFor(m);
+  const angsur=sudahAngsur(m);
+  let h='<h3>🧭 Siap kunjungan — '+esc(m.nama)+'</h3>';
+  h+='<div class="dim nums">'+esc(m.no_rekening)+(m.produk?' · '+esc(m.produk):'')+'</div><hr>';
+  h+='<dl class="kv">';
+  if(m.ao)h+='<dt>AO</dt><dd>'+esc(m.ao)+'</dd>';
+  if(m.coll!=null)h+='<dt>Coll</dt><dd>'+m.coll+'</dd>';
+  if(m.saldo)h+='<dt>Outstanding</dt><dd class="nums">'+fmtRpFull(m.saldo)+'</dd>';
+  if(m.angsuran_bulanan)h+='<dt>Angsuran/bln</dt><dd class="nums">'+fmtRpFull(m.angsuran_bulanan)+'</dd>';
+  h+='<dt>Status angsur</dt><dd>'+(m.lunas?badge('LUNAS','green'):badge(angsur?'✓ Sudah':'Belum',angsur?'green':'amber'))+'</dd>';
+  if(m.alamat)h+='<dt>Alamat</dt><dd>'+esc(m.alamat)+'</dd>';
+  if(m.no_hp)h+='<dt>HP/WA</dt><dd class="nums">'+esc(m.no_hp)+'</dd>';
+  if(j)h+='<dt>Janji bayar</dt><dd>'+esc(fmtTgl(j.target||j.tanggal))+(j.hasil?(' · '+esc(String(j.hasil).slice(0,60))):'')+'</dd>';
+  if(last)h+='<dt>Kunjungan terakhir</dt><dd>'+esc(fmtTgl(last.tanggal))+(last.hasil?(' · '+esc(String(last.hasil).slice(0,60))):'')+'</dd>';
+  h+='</dl>';
+  if(last&&last.fotos&&last.fotos.length){
+    h+='<div class="dim" style="margin:6px 0 2px"><b>Foto terakhir:</b></div>'+renderFotoStrip(last.fotos,true);
+  }
+  h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px">';
+  if(waLink(m.no_hp,m.nama))h+='<a href="'+waLink(m.no_hp,m.nama)+'" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none;background:#25a244;color:#fff;padding:10px;border-radius:10px;font-weight:700;font-size:13px">💬 WhatsApp</a>';
+  if(mapsUrl(m.alamat))h+='<a href="'+mapsUrl(m.alamat)+'" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none;background:#eaf3fb;color:#1f6fbf;padding:10px;border-radius:10px;font-weight:700;font-size:13px">🗺️ Peta</a>';
+  h+='</div>';
+  h+='<div class="dim" style="margin-top:8px">Ketuk <code>riwayat '+esc(m.nama)+'</code> untuk histori lengkap.</div>';
+  return h;
+}
+
+function answerKinerjaAO(t){
+  const ym=todayISO().slice(0,7);
+  const akt=aktifList();
+  const byAo={};
+  akt.forEach(m=>{
+    const a=m.ao||'(Tanpa AO)';
+    if(!byAo[a])byAo[a]={ao:a,rek:0,sudah:0,belum:0,os:0,coll3:0};
+    byAo[a].rek++;
+    if(sudahAngsur(m))byAo[a].sudah++;else byAo[a].belum++;
+    byAo[a].os+=m.saldo||0;
+    if(m.coll!=null&&m.coll>=3)byAo[a].coll3++;
+  });
+  // laporan marketing bulan ini
+  const mkBy={};
+  DB.mk.forEach(r=>{
+    if(String(r.tanggal||'').slice(0,7)!==ym)return;
+    const a=r.ao||'(Tanpa AO)';
+    if(!mkBy[a])mkBy[a]={lap:0,bayar:0,janji:0,tidak:0};
+    mkBy[a].lap++;
+    if(r.status==='Sudah Bayar')mkBy[a].bayar++;
+    else if(r.status==='Janji Bayar')mkBy[a].janji++;
+    else if(r.status==='Tidak Bertemu')mkBy[a].tidak++;
+  });
+  // janji aktif lewat per AO
+  const latest={};
+  DB.mk.forEach(r=>{
+    const k=String(r.norek||'').trim()||normNama(r.debitur||'');
+    if(!k)return;
+    const cur=latest[k];
+    const a=(r.tanggal||'')+'|'+(r.createdAt||0);
+    if(!cur||a>((cur.tanggal||'')+'|'+(cur.createdAt||0)))latest[k]=r;
+  });
+  const today=todayISO();
+  Object.values(latest).forEach(r=>{
+    if(r.status!=='Janji Bayar')return;
+    const tg=String(r.target||'').slice(0,10);
+    if(!tg||tg>=today)return;
+    const a=r.ao||'(Tanpa AO)';
+    if(!mkBy[a])mkBy[a]={lap:0,bayar:0,janji:0,tidak:0,janjiLewat:0};
+    mkBy[a].janjiLewat=(mkBy[a].janjiLewat||0)+1;
+  });
+
+  const aos=Object.keys(byAo).sort();
+  let h='<h3>📊 Kinerja AO</h3><div class="dim">Portofolio aktif + laporan marketing bulan '+esc(ym)+'.</div><hr>';
+  if(!aos.length)return h+note('Kolom AO tidak terbaca.','warn');
+  // ranking by bayar bulan ini then sudah angsur ratio
+  const ranked=aos.map(a=>{
+    const p=byAo[a];const m=mkBy[a]||{lap:0,bayar:0,janji:0,tidak:0,janjiLewat:0};
+    return {a,p,m,score:(m.bayar||0)*3+(p.sudah||0)-(m.janjiLewat||0)*2-(p.coll3||0)};
+  }).sort((x,y)=>y.score-x.score);
+
+  ranked.forEach((row,i)=>{
+    const p=row.p,m=row.m;
+    h+='<div class="card" style="cursor:default"><div class="top"><div class="name">'+(i+1)+'. '+esc(row.a)+'</div><div class="rek">'+p.rek+' rek</div></div>'+
+      '<div class="badges">'+
+        badge('✓ '+p.sudah+' angsur','green')+
+        badge(p.belum+' belum','grey')+
+        badge('OS '+fmtRp(p.os),'amber')+
+        (p.coll3?badge('Coll≥3: '+p.coll3,'red'):'')+
+      '</div>'+
+      '<div class="line">Laporan bln ini: <b>'+m.lap+'</b> · Bayar '+m.bayar+' · Janji '+m.janji+(m.janjiLewat?(' · 🔴 Lewat '+m.janjiLewat):'')+(m.tidak?(' · Tidak bertemu '+m.tidak):'')+'</div></div>';
+  });
+  return h;
+}
+
+function answerRingkasHarian(t){
+  const today=todayISO();
+  const ym=today.slice(0,7);
+  const akt=aktifList();
+  const sudah=akt.filter(sudahAngsur).length;
+  const belum=akt.length-sudah;
+  const mkToday=DB.mk.filter(r=>String(r.tanggal||'').slice(0,10)===today);
+  const st={};mkToday.forEach(r=>{const k=r.status||'(?)';st[k]=(st[k]||0)+1});
+  const prior=getPrioritasList(5);
+  const janjiToday=getActiveJanjiAlerts().filter(a=>a.kind==='today'||a.kind==='overdue');
+
+  const lines=[];
+  lines.push('📋 *Ringkasan KOPENA Limpung — '+fmtTgl(today)+'*');
+  lines.push('');
+  lines.push('• Rekening aktif: '+akt.length+' (sudah angsur '+sudah+', belum '+belum+')');
+  lines.push('• Laporan marketing hari ini: '+mkToday.length+(mkToday.length?(' ('+Object.entries(st).map(e=>e[0]+' '+e[1]).join(', ')+')'):''));
+  if(janjiToday.length){
+    lines.push('• Janji bayar perlu perhatian: '+janjiToday.length);
+    janjiToday.slice(0,5).forEach(a=>lines.push('  - '+a.text.split(' · ')[0]+' ('+(a.kind==='overdue'?'LEWAT':'hari ini')+')'));
+  }
+  if(prior.length){
+    lines.push('• Prioritas kunjungan:');
+    prior.slice(0,5).forEach((x,i)=>lines.push('  '+(i+1)+'. '+x.m.nama+(x.m.coll!=null?' Coll'+x.m.coll:'')+(x.m.saldo?' OS '+fmtRp(x.m.saldo):'')));
+  }
+  lines.push('');
+  lines.push('_Dibuat otomatis oleh Tanya KOPENA_');
+  const text=lines.join('\n');
+
+  let h='<h3>📝 Ringkasan siap WA — '+esc(fmtTgl(today))+'</h3><hr>';
+  h+='<pre style="white-space:pre-wrap;font-size:12.5px;line-height:1.45">'+esc(text)+'</pre>';
+  h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">';
+  h+='<button type="button" class="chip" style="border:none;background:var(--brand);color:#fff" onclick="navigator.clipboard.writeText(document.getElementById(\'ringkasWaText\').textContent).then(()=>alert(\'Tersalin! Siap tempel ke WA.\')).catch(()=>alert(\'Gagal salin, blok teks manual.\'))">📋 Salin teks</button>';
+  h+='</div>';
+  h+='<textarea id="ringkasWaText" readonly style="position:absolute;left:-9999px;height:1px;width:1px">'+esc(text)+'</textarea>';
+  // juga tampil kartu prioritas
+  if(prior.length){
+    h+='<hr><div class="dim"><b>Prioritas (ketuk untuk detail):</b></div>';
+    prior.forEach(x=>{h+=masterCard(x.m)});
+  }
+  return h;
+}
+
 /* ============ DISPATCHER ============ */
 function buildAnswer(text){
   switch(detectIntent(text)){
@@ -1152,6 +1402,10 @@ function buildAnswer(text){
     case 'lunas':return answerLunas(text);
     case 'coll':return answerColl(text);
     case 'ao':return answerAO(text);
+    case 'kinerja_ao':return answerKinerjaAO(text);
+    case 'prioritas':return answerPrioritas();
+    case 'siap_kunjungan':return answerSiapKunjungan(text);
+    case 'ringkas_harian':return answerRingkasHarian(text);
     case 'janji':return answerJanjiBayar(text);
     case 'pengingat':return answerPengingat(text);
     case 'laporan':return answerLaporanMarketing(text);
@@ -1228,6 +1482,10 @@ function llmSystemPrompt(){
 '- tunggakan — outstanding terbesar / piutang terbesar\n'+
 '- janji — janji bayar (termasuk yang sudah lewat target)\n'+
   '- pengingat — buat/lihat pengingat (ingatkan aku...). Isi tanggal YYYY-MM-DD jika disebut\n'+
+  '- prioritas — prioritas harian / fokus hari ini\n'+
+  '- siap_kunjungan — mode siap kunjungan lapangan (isi nama jika disebut)\n'+
+  '- kinerja_ao — perbandingan/kinerja AO\n'+
+  '- ringkas_harian — ringkasan hari ini siap WA\n'+
 '- laporan — laporan marketing / laporan harian lapangan. Isi tanggal dan/atau ao jika disebut\n'+
 '- belum_dikunjungi — yang belum pernah dikunjungi\n'+
 '- ao — rekap per AO (isi ao jika menyebut satu AO)\n'+
@@ -1402,6 +1660,10 @@ function routeToCommand(r){
     }
     case'belum_dikunjungi':return'siapa yang belum dikunjungi';
     case'ao':return'rekap per AO '+(r.ao||'');
+    case'kinerja_ao':return'kinerja AO';
+    case'prioritas':return'prioritas harian';
+    case'siap_kunjungan':return n?'siap kunjungan '+n:'siap kunjungan';
+    case'ringkas_harian':return'ringkas hari ini';
     case'diagnosa':return'diagnosa';
     case'bantuan':return'bantuan';
   }
@@ -1434,7 +1696,7 @@ function addAiMsg(html){const d=document.createElement('div');d.className='msg a
 function addTyping(){const d=document.createElement('div');d.className='msg ai';d.id='typing';d.innerHTML='<div class="avatar">TK</div><div class="bubble"><div class="typing"><i></i><i></i><i></i></div></div>';chatEl.appendChild(d);scrollBottom()}
 function removeTyping(){const t=$('#typing');if(t)t.remove()}
 
-const CHIPS=['Berapa nasabah sudah angsur?','Yang belum angsur','Ada yang janji bayar?','Pengingat aktif','Laporan marketing','Siapa yang belum dikunjungi?','Sebaran Coll','Rekap per AO','Tunggakan terbesar','Diagnosa'];
+const CHIPS=['Prioritas harian','Ringkas hari ini','Siap kunjungan','Kinerja AO','Ada yang janji bayar?','Yang belum angsur','Laporan marketing','Pengingat aktif','Sebaran Coll','Diagnosa'];
 
 function renderChips(){
   chipsEl.innerHTML='';
@@ -1549,8 +1811,18 @@ function greet(){
   const jam=new Date().getHours();
   const sap=jam<11?'Pagi':jam<15?'Siang':jam<18?'Sore':'Malam';
   addAiMsg('<h3>'+sap+'! 👋 Aku Tanya KOPENA</h3>'+
-    '<p>Aku bisa cari data nasabah, lihat riwayat kunjungan, foto, dan status angsuran.</p>'+
-    '<div class="dim">Contoh: <code>cari Surip</code> · <code>berapa nasabah sudah angsur?</code> · <code>sebaran Coll</code> · <code>berapa yang lunas?</code></div>');
+    '<p>Aku bantu data nasabah, kunjungan, angsuran, laporan marketing, dan prioritas harian.</p>'+
+    '<div class="dim">Coba: <code>prioritas harian</code> · <code>ringkas hari ini</code> · <code>siap kunjungan [nama]</code> · <code>kinerja AO</code></div>');
+  // setelah data master+mk siap, tampilkan prioritas singkat
+  const tryPrio=()=>{
+    if(!DB.ready.master){setTimeout(tryPrio,1500);return}
+    const list=getPrioritasList(3);
+    if(!list.length)return;
+    let h='<h3>🎯 Fokus hari ini</h3><div class="dim">3 prioritas teratas — ketik <code>prioritas harian</code> untuk lengkap.</div><hr>';
+    list.forEach((x,i)=>{h+='<div class="card" data-rek="'+esc(x.m.no_rekening)+'" data-nama="'+esc(x.m.nama)+'"><div class="top"><div class="name">'+(i+1)+'. '+esc(x.m.nama)+'</div><div class="rek">'+esc(x.reasons.slice(0,2).join(' · '))+'</div></div></div>'});
+    addAiMsg(h);
+  };
+  setTimeout(tryPrio,2500);
 }
 renderChips();
 greet();
@@ -1560,6 +1832,8 @@ listenAiKey();
 fetchMaster();
 initSpeech();
 renderAlertBar();
+setTimeout(renderAlertBar,2000);
+setTimeout(renderAlertBar,6000);
 setInterval(updateStatus,5000);
 setInterval(fetchMaster,5*60*1000);
 setInterval(renderAlertBar,60*1000);
