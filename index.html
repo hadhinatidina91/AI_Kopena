@@ -95,6 +95,22 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,Bl
 @keyframes pulse{50%{opacity:.55}}
 #btnSend{background:var(--brand);color:#fff}
 #btnSend:disabled{opacity:.4}
+.alert-bar{background:#fff8e6;border-bottom:1px solid #f0d888;padding:0;max-height:40vh;overflow-y:auto;flex:0 0 auto}
+.alert-bar:empty{display:none}
+.alert-item{display:flex;gap:8px;align-items:flex-start;padding:10px 12px;border-bottom:1px solid #f5e6b8;cursor:pointer;animation:pop .18s ease-out}
+.alert-item:last-child{border-bottom:0}
+.alert-item:active{background:#fbf3e2}
+.alert-item .ai-icon{flex:0 0 22px;font-size:16px;line-height:1.2}
+.alert-item .ai-body{flex:1;min-width:0}
+.alert-item .ai-title{font-size:13px;font-weight:700;color:#7a5c00}
+.alert-item .ai-text{font-size:12.5px;color:#5c4a1a;margin-top:1px}
+.alert-item .ai-close{flex:0 0 28px;height:28px;border:none;background:transparent;color:#9a7b20;font-size:16px;cursor:pointer;border-radius:8px}
+.alert-item.overdue{background:#fbeae7;border-bottom-color:#f2c8c1}
+.alert-item.overdue .ai-title{color:#9c3225}
+.alert-item.overdue .ai-text{color:#7a2e22}
+.alert-item.today{background:#fbf3e2}
+.alert-item.custom{background:#eef6f3}
+.alert-item.custom .ai-title{color:var(--brand)}
 .lightbox{position:fixed;inset:0;background:rgba(8,18,15,.94);display:none;align-items:center;justify-content:center;z-index:999;padding:20px;flex-direction:column;gap:12px}
 .lightbox.show{display:flex}
 .lightbox img{max-width:100%;max-height:80vh;border-radius:10px}
@@ -114,6 +130,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,Bl
   <button class="icon-btn" id="btnClearChat" title="Obrolan baru">🗑</button>
   <button class="icon-btn" id="btnReload" title="Muat ulang">⟳</button>
 </header>
+<div class="alert-bar" id="alertBar"></div>
 
 <main class="chat" id="chat"></main>
 <div class="chips" id="chips"></div>
@@ -283,6 +300,7 @@ function listenMK(){
     buildPaidSets();
     DB.ready.mk=true;
     updateStatus();
+    renderAlertBar();
   },err=>{console.warn('MK',err)});
 }
 async function fetchMaster(){
@@ -532,6 +550,8 @@ function detectIntent(t){
   const has=(...ws)=>ws.some(w=>s.includes(w));
 
   if(/^(diagnosa|debug|cek data|cek field|cek kolom)/.test(clean))return'diagnosa';
+  if(/\b(ingatkan|pengingat|reminder|ingatinkan|remind)\b/.test(s)||has('ingatkan aku','ingatkan saya','set reminder'))return'pengingat';
+
   if(/^(halo+|hai+|hi+|hello+|hey+|hallo+|helo+)(\s+(semua|kamu|bot|admin|min))?$/i.test(clean))return'sapaan';
   if(/^(assalamualaikum|assalamu\s*alaikum|salam)/i.test(clean))return'sapaan';
   if(/^selamat\s+(pagi|siang|sore|malam)$/i.test(clean))return'sapaan';
@@ -576,6 +596,7 @@ function answerBantuan(){
     '<li><b>Siapa yang belum dikunjungi?</b></li>'+
     '<li><b>Riwayat kunjungan Surip</b> · <b>Foto Surip</b></li>'+
     '<li><b>Laporan marketing tanggal 29 September 2026</b></li>'+
+    '<li><b>Ingatkan aku besok tagih Surip</b> · <b>Pengingat aktif</b></li>'+
     '<li><b>Rekap per AO</b> · <b>Tunggakan terbesar</b> · <b>Janji bayar</b></li>'+
     '<li><b>Diagnosa</b> — cek data mentah dari server</li></ul>';
 }
@@ -897,6 +918,161 @@ function answerLaporanMarketing(t){
   return h;
 }
 
+
+/* ============ PENGINGAT / ALERT BAR ============ */
+const REM_KEY='kopena_reminders_v1';
+const DISMISS_KEY='kopena_alert_dismiss_v1';
+function loadReminders(){try{return JSON.parse(localStorage.getItem(REM_KEY)||'[]')}catch(e){return[]}}
+function saveReminders(list){try{localStorage.setItem(REM_KEY,JSON.stringify(list))}catch(e){}}
+function loadDismissed(){try{return JSON.parse(localStorage.getItem(DISMISS_KEY)||'{}')}catch(e){return{}}}
+function saveDismissed(o){try{localStorage.setItem(DISMISS_KEY,JSON.stringify(o))}catch(e){}}
+function addDaysISO(iso,n){const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function parseReminderWhen(t){
+  const s=String(t||'').toLowerCase();
+  const tgl=parseDateFromText(t);
+  if(tgl)return tgl;
+  if(/\bbesok\b/.test(s))return addDaysISO(todayISO(),1);
+  if(/\blusa\b/.test(s))return addDaysISO(todayISO(),2);
+  if(/\bhari\s*ini\b/.test(s))return todayISO();
+  // hari minggu depan: senin/selasa/...
+  const hari={minggu:0,senin:1,selasa:2,rabu:3,kamis:4,jumat:5,sabtu:6};
+  for(const [nama,target] of Object.entries(hari)){
+    if(s.includes(nama)){
+      const now=new Date();const cur=now.getDay();
+      let add=(target-cur+7)%7;if(add===0)add=7;
+      return addDaysISO(todayISO(),add);
+    }
+  }
+  return null;
+}
+function getActiveJanjiAlerts(){
+  // laporan terakhir per debitur yang status Janji Bayar
+  const latest={};
+  DB.mk.forEach(r=>{
+    const k=String(r.norek||'').trim()||normNama(r.debitur||'');
+    if(!k)return;
+    const cur=latest[k];
+    const a=(r.tanggal||'')+'|'+(r.createdAt||0);
+    if(!cur||a>((cur.tanggal||'')+'|'+(cur.createdAt||0)))latest[k]=r;
+  });
+  const today=todayISO();
+  const out=[];
+  Object.values(latest).forEach(r=>{
+    if(r.status!=='Janji Bayar')return;
+    const target=String(r.target||'').slice(0,10);
+    if(!target)return;
+    let kind=null;
+    if(target<today)kind='overdue';
+    else if(target===today)kind='today';
+    else if(target<=addDaysISO(today,2))kind='soon';
+    if(!kind)return;
+    out.push({
+      id:'janji-'+(r.norek||normNama(r.debitur))+'-'+target,
+      kind:kind,
+      type:'janji',
+      title:kind==='overdue'?('Janji bayar LEWAT — '+fmtTgl(target)):kind==='today'?('Janji bayar HARI INI — '+fmtTgl(target)):('Janji bayar segera — '+fmtTgl(target)),
+      text:(r.debitur||'(tanpa nama)')+(r.hasil?(' · '+String(r.hasil).slice(0,80)):''),
+      nama:r.debitur||'',
+      norek:r.norek||'',
+      tanggal:target
+    });
+  });
+  out.sort((a,b)=>{
+    const o={overdue:0,today:1,soon:2};
+    return (o[a.kind]-o[b.kind])||String(a.tanggal).localeCompare(String(b.tanggal));
+  });
+  return out;
+}
+function getCustomReminderAlerts(){
+  const today=todayISO();
+  const list=loadReminders().filter(r=>!r.done&&r.tanggal&&r.tanggal<=addDaysISO(today,3));
+  return list.map(r=>({
+    id:'rem-'+r.id,
+    kind:r.tanggal<today?'overdue':(r.tanggal===today?'today':'soon'),
+    type:'custom',
+    title:(r.tanggal<today?'Pengingat lewat':'Pengingat')+' — '+fmtTgl(r.tanggal),
+    text:r.teks||'',
+    nama:r.nama||'',
+    tanggal:r.tanggal,
+    remId:r.id
+  }));
+}
+function renderAlertBar(){
+  const bar=$('#alertBar');if(!bar)return;
+  const dismissed=loadDismissed();
+  const today=todayISO();
+  // bersihkan dismiss lama
+  Object.keys(dismissed).forEach(k=>{if(dismissed[k]<today)delete dismissed[k]});
+  saveDismissed(dismissed);
+  const items=[...getCustomReminderAlerts(),...getActiveJanjiAlerts()]
+    .filter(a=>!dismissed[a.id])
+    .slice(0,8);
+  if(!items.length){bar.innerHTML='';return}
+  bar.innerHTML=items.map(a=>{
+    const cls=a.kind==='overdue'?'overdue':(a.type==='custom'?'custom':'today');
+    const icon=a.kind==='overdue'?'🔴':(a.kind==='today'?'🟡':'🔔');
+    return '<div class="alert-item '+cls+'" data-alert-id="'+esc(a.id)+'" data-nama="'+esc(a.nama||'')+'" data-type="'+esc(a.type)+'">'+
+      '<div class="ai-icon">'+icon+'</div>'+
+      '<div class="ai-body"><div class="ai-title">'+esc(a.title)+'</div><div class="ai-text">'+esc(a.text)+'</div></div>'+
+      '<button type="button" class="ai-close" title="Tutup" data-dismiss="'+esc(a.id)+'">✕</button></div>';
+  }).join('');
+}
+function dismissAlert(id){
+  const d=loadDismissed();
+  d[id]=todayISO();
+  saveDismissed(d);
+  renderAlertBar();
+}
+function answerPengingat(t){
+  const s=String(t||'').toLowerCase();
+  // daftar pengingat
+  if(/daftar|lihat|tampilkan|apa saja|list/.test(s)&&!/ingatkan\s+(aku|saya)/.test(s)){
+    const list=loadReminders().filter(r=>!r.done).sort((a,b)=>String(a.tanggal).localeCompare(String(b.tanggal)));
+    let h='<h3>🔔 Pengingat aktif: <b>'+list.length+'</b></h3><hr>';
+    if(!list.length)return h+'<div class="dim">Belum ada pengingat. Contoh: <code>ingatkan aku besok tagih Surip</code></div>';
+    list.forEach(r=>{
+      h+='<div class="card" style="cursor:default"><div class="top"><div class="name">'+esc(r.teks)+'</div><div class="rek">'+esc(fmtTgl(r.tanggal))+'</div></div>'+
+        (r.nama?'<div class="line">Nasabah: '+esc(r.nama)+'</div>':'')+'</div>';
+    });
+    h+='<div class="dim" style="margin-top:8px">Pengingat juga muncul otomatis di banner atas dari <b>janji bayar</b> laporan marketing (hari ini / lewat / 2 hari ke depan).</div>';
+    return h;
+  }
+  // hapus semua
+  if(/hapus semua|clear/.test(s)){
+    saveReminders([]);
+    renderAlertBar();
+    return note('Semua pengingat kustom dihapus.','ok');
+  }
+  const when=parseReminderWhen(t);
+  // ekstrak teks pengingat
+  let teks=String(t||'');
+  teks=teks.replace(/\b(ingatkan|ingatinkan|pengingat|reminder|remind)\b/gi,'');
+  teks=teks.replace(/\b(aku|saya|untuk|supaya|agar)\b/gi,'');
+  teks=teks.replace(/\b(hari\s*ini|besok|lusa|senin|selasa|rabu|kamis|jumat|sabtu|minggu)\b/gi,'');
+  teks=teks.replace(/\b(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})\b/g,'');
+  teks=teks.replace(/\b(\d{1,2}\s+(januari|februari|maret|april|mei|juni|juli|agustus|september|oktober|november|desember|jan|feb|mar|apr|jun|jul|agu|sep|okt|nov|des)\s+\d{4})\b/gi,'');
+  teks=teks.replace(/\s+/g,' ').trim()||'Pengingat';
+  const nama=extractName(teks);
+  if(!when){
+    return note('Sebutkan kapan pengingatnya. Contoh:<br>• <code>ingatkan aku besok tagih Surip</code><br>• <code>ingatkan aku Senin kunjungi Coll 3</code><br>• <code>ingatkan aku 15/10/2026 follow up janji bayar</code>','warn');
+  }
+  const list=loadReminders();
+  const item={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),tanggal:when,teks:teks,nama:nama||'',createdAt:Date.now(),done:false};
+  list.push(item);
+  saveReminders(list);
+  renderAlertBar();
+  // minta izin notifikasi browser (opsional)
+  try{
+    if(typeof Notification!=='undefined'&&Notification.permission==='default'){
+      Notification.requestPermission().catch(()=>{});
+    }
+  }catch(e){}
+  let h=note('🔔 Pengingat disimpan untuk <b>'+esc(fmtTgl(when))+'</b>','ok');
+  h+='<dl class="kv"><dt>Isi</dt><dd>'+esc(teks)+'</dd><dt>Tanggal</dt><dd>'+esc(fmtTgl(when))+'</dd></dl>';
+  h+='<div class="dim">Akan muncul di banner atas aplikasi. Janji bayar dari laporan marketing juga otomatis ditampilkan di sana.</div>';
+  return h;
+}
+
 function answerJanjiBayar(t){
   // Ambil laporan TERAKHIR per debitur; hanya yang status terakhirnya Janji Bayar
   const latest={};
@@ -977,6 +1153,7 @@ function buildAnswer(text){
     case 'coll':return answerColl(text);
     case 'ao':return answerAO(text);
     case 'janji':return answerJanjiBayar(text);
+    case 'pengingat':return answerPengingat(text);
     case 'laporan':return answerLaporanMarketing(text);
     case 'belum':return answerBelumDikunjungi(text);
     case 'foto':return answerFoto(text);
@@ -1050,6 +1227,7 @@ function llmSystemPrompt(){
 '- statistik — rangkuman umum / ringkasan data\n'+
 '- tunggakan — outstanding terbesar / piutang terbesar\n'+
 '- janji — janji bayar (termasuk yang sudah lewat target)\n'+
+  '- pengingat — buat/lihat pengingat (ingatkan aku...). Isi tanggal YYYY-MM-DD jika disebut\n'+
 '- laporan — laporan marketing / laporan harian lapangan. Isi tanggal dan/atau ao jika disebut\n'+
 '- belum_dikunjungi — yang belum pernah dikunjungi\n'+
 '- ao — rekap per AO (isi ao jika menyebut satu AO)\n'+
@@ -1210,6 +1388,10 @@ function routeToCommand(r){
     case'statistik':return'rangkum data';
     case'tunggakan':return'tunggakan terbesar';
     case'janji':return'janji bayar';
+    case'pengingat':{
+      const tgl=r.tanggal?String(r.tanggal).trim():'';
+      return tgl?'ingatkan aku tanggal '+tgl:'daftar pengingat';
+    }
     case'laporan':{
       const tgl=r.tanggal?String(r.tanggal).trim():'';
       const ao=r.ao?String(r.ao).trim():'';
@@ -1232,6 +1414,7 @@ async function answerSmart(text){
     const r=await llmRoute(text,key);
     if(r.nama)lastNama=String(r.nama);
     if(r.intent==='ngobrol'&&r.balasan)return'<p>'+esc(r.balasan)+'</p>';
+    if(r.intent==='pengingat')return answerPengingat(text);
     const cmd=routeToCommand(r);
     if(!cmd)return buildAnswer(text);
     return buildAnswer(cmd);
@@ -1251,7 +1434,7 @@ function addAiMsg(html){const d=document.createElement('div');d.className='msg a
 function addTyping(){const d=document.createElement('div');d.className='msg ai';d.id='typing';d.innerHTML='<div class="avatar">TK</div><div class="bubble"><div class="typing"><i></i><i></i><i></i></div></div>';chatEl.appendChild(d);scrollBottom()}
 function removeTyping(){const t=$('#typing');if(t)t.remove()}
 
-const CHIPS=['Berapa nasabah sudah angsur?','Yang belum angsur','Berapa yang lunas?','Sebaran Coll','Siapa yang belum dikunjungi?','Ada yang janji bayar?','Laporan marketing','Rekap per AO','Tunggakan terbesar','Diagnosa'];
+const CHIPS=['Berapa nasabah sudah angsur?','Yang belum angsur','Ada yang janji bayar?','Pengingat aktif','Laporan marketing','Siapa yang belum dikunjungi?','Sebaran Coll','Rekap per AO','Tunggakan terbesar','Diagnosa'];
 
 function renderChips(){
   chipsEl.innerHTML='';
@@ -1376,8 +1559,22 @@ listenMK();
 listenAiKey();
 fetchMaster();
 initSpeech();
+renderAlertBar();
 setInterval(updateStatus,5000);
 setInterval(fetchMaster,5*60*1000);
+setInterval(renderAlertBar,60*1000);
+// alert bar: dismiss / klik buka detail
+document.addEventListener('click',e=>{
+  const btn=e.target.closest('[data-dismiss]');
+  if(btn){e.stopPropagation();dismissAlert(btn.getAttribute('data-dismiss'));return}
+  const item=e.target.closest('.alert-item');
+  if(item){
+    const nama=item.getAttribute('data-nama')||'';
+    const type=item.getAttribute('data-type')||'';
+    if(type==='janji'&&nama) ask('janji bayar '+nama);
+    else if(nama) ask('cari '+nama);
+  }
+});
 
 /* ============ PWA ============ */
 if ('serviceWorker' in navigator) {
