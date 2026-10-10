@@ -247,6 +247,13 @@ body{
   background:var(--brand);color:#fff;font-size:10px;font-weight:800;
   padding:1px 6px;border-radius:999px;border:2px solid #fff;
 }
+.photo-block{
+  background:#fff;border:1px solid var(--line);border-radius:10px;
+  padding:10px 12px;margin:8px 0;
+}
+.photo-block .pb-head{
+  font-size:12px;color:var(--muted);margin-bottom:6px;line-height:1.4;
+}
 
 .lightbox{
   position:fixed;inset:0;background:rgba(8,18,15,.94);
@@ -273,6 +280,81 @@ body{
   color:#fff;padding:8px 16px;border-radius:999px;font-size:13px;
   font-weight:700;cursor:pointer;
 }
+
+/* === Feedback & Analisis === */
+.feedback-row{
+  display:flex;gap:6px;margin-top:8px;padding-top:8px;
+  border-top:1px dashed var(--line);
+}
+.feedback-btn{
+  font:inherit;font-size:11.5px;font-weight:700;
+  padding:4px 10px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--line);background:#fff;color:var(--muted);
+}
+.feedback-btn:active{background:var(--brand-soft)}
+.feedback-btn.done{background:var(--green-soft);color:var(--green);border-color:#c6e6d1}
+
+.insight-card{
+  background:linear-gradient(135deg,#fbfdfc,#f0f6f3);
+  border:1px solid var(--line);border-left:4px solid var(--brand);
+  border-radius:10px;padding:11px 13px;margin:8px 0;
+}
+.insight-card.warn{border-left-color:var(--amber);background:linear-gradient(135deg,#fffdf6,#fbf3e2)}
+.insight-card.danger{border-left-color:var(--red);background:linear-gradient(135deg,#fdf6f5,#fbeae7)}
+.insight-card.ok{border-left-color:var(--green);background:linear-gradient(135deg,#f7fcf9,#e6f4ea)}
+.insight-card .title{font-size:12px;font-weight:800;color:var(--brand);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.insight-card.warn .title{color:var(--amber)}
+.insight-card.danger .title{color:var(--red)}
+.insight-card.ok .title{color:var(--green)}
+.insight-card p{margin:0 0 6px;font-size:13px}
+.insight-card p:last-child{margin-bottom:0}
+
+.metric-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;
+}
+.metric{
+  background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 11px;
+}
+.metric .lbl{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;display:block}
+.metric .val{font-size:17px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+.metric .sub{font-size:11px;color:var(--muted);margin-top:1px}
+.metric.warn .val{color:var(--amber)}
+.metric.danger .val{color:var(--red)}
+.metric.ok .val{color:var(--green)}
+
+.rule-editor{
+  width:100%;min-height:110px;padding:10px 12px;border-radius:10px;
+  border:1px solid var(--line);background:#fff;font:inherit;font-size:13px;
+  line-height:1.55;color:var(--ink);outline:none;resize:vertical;
+}
+.rule-editor:focus{border-color:var(--brand2)}
+.example-editor{
+  width:100%;min-height:160px;padding:10px 12px;border-radius:10px;
+  border:1px solid var(--line);background:#fff;font:inherit;font-size:12.5px;
+  line-height:1.5;color:var(--ink);outline:none;resize:vertical;
+  font-family:ui-monospace,monospace;
+}
+.corrections-list{
+  max-height:220px;overflow-y:auto;border:1px solid var(--line);
+  border-radius:10px;background:#fff;padding:8px;font-size:12px;
+  margin:8px 0;
+}
+.correction-item{padding:7px 9px;border-bottom:1px dashed var(--line)}
+.correction-item:last-child{border-bottom:0}
+.correction-item .q{font-weight:700;color:var(--brand);margin-bottom:2px}
+.correction-item .wrong{color:var(--red);font-size:11px}
+.correction-item .right{color:var(--green);font-size:11px}
+.section-tab{
+  display:flex;gap:4px;margin-bottom:12px;border-bottom:1px solid var(--line);
+  overflow-x:auto;scrollbar-width:none;
+}
+.section-tab::-webkit-scrollbar{display:none}
+.section-tab button{
+  font:inherit;font-size:12.5px;font-weight:700;
+  padding:8px 12px;border:0;background:transparent;color:var(--muted);
+  border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;
+}
+.section-tab button.active{color:var(--brand);border-bottom-color:var(--brand)}
 </style>
 </head>
 <body>
@@ -293,8 +375,8 @@ body{
 <div class="chips" id="chips"></div>
 
 <form class="composer" id="composer" autocomplete="off">
-  <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.pdf" style="display:none">
-  <button type="button" id="btnAttach" title="Upload file data (Excel/CSV/PDF)">📎</button>
+  <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.xml,.pdf" style="display:none">
+  <button type="button" id="btnAttach" title="Upload file data (Excel/CSV/XML/PDF)">📎</button>
   <button type="button" id="btnMic" title="Tanya dengan suara">🎤</button>
   <input id="q" placeholder="Tanya apa saja tentang nasabah…" autocomplete="off" enterkeyhint="send">
   <button type="submit" id="btnSend" title="Kirim">➤</button>
@@ -337,6 +419,57 @@ body{
       <button class="btn-ghost" id="btnResetSettings">Kembalikan Default</button>
       <button class="btn-ghost" id="btnManageUpload">📎 Kelola Data Upload</button>
       <div id="uploadInfoBox" style="margin-top:8px"></div>
+
+      <div style="height:14px;border-top:1px solid var(--line);margin:14px 0"></div>
+
+      <div class="section-tab" id="settingsTabs">
+        <button data-tab="rules" class="active">📋 Aturan Bisnis</button>
+        <button data-tab="examples">💬 Contoh Jawaban</button>
+        <button data-tab="corrections">🔧 Koreksi</button>
+        <button data-tab="analysis">📊 Analisis</button>
+      </div>
+
+      <div id="tabRules" class="settings-tab">
+        <div class="hint">Aturan main kantor kamu — AI akan mematuhi ini saat menjawab. Satu aturan per baris.</div>
+        <textarea id="setRules" class="rule-editor" placeholder="- Nasabah coll 3+ = prioritas kunjungan
+- Kalau belum bayar >2 bulan dan belum dikunjungi → urgent
+- Angsuran > 5jt → highlight"></textarea>
+        <button class="btn-primary" style="margin-top:8px" id="btnSaveRules">Simpan Aturan</button>
+      </div>
+
+      <div id="tabExamples" class="settings-tab" style="display:none">
+        <div class="hint">Contoh percakapan ideal. Format: <code>Q: pertanyaan</code> lalu <code>A: jawaban</code>. Pisahkan antar contoh dengan baris kosong.</div>
+        <textarea id="setExamples" class="example-editor" placeholder="Q: Bu Sri udah bayar belum?
+A: Bu Sri (rek 541052001586) belum ada catatan bayar bulan ini. Angsuran wajibnya Rp 9.479.167.
+
+Q: Siapa yang coll 3?
+A: Ada 19 nasabah coll 3, total outstanding Rp XXX."></textarea>
+        <button class="btn-primary" style="margin-top:8px" id="btnSaveExamples">Simpan Contoh</button>
+      </div>
+
+      <div id="tabCorrections" class="settings-tab" style="display:none">
+        <div class="hint">Setiap kali kamu klik ❌ di jawaban AI, koreksinya tersimpan di sini. AI akan belajar dari kesalahannya.</div>
+        <div id="correctionsList" class="corrections-list"></div>
+        <button class="btn-ghost" id="btnClearCorrections">🗑 Hapus Semua Koreksi</button>
+      </div>
+
+      <div id="tabAnalysis" class="settings-tab" style="display:none">
+        <div class="switch-row">
+          <span>Aktifkan analisis mendalam</span>
+          <label class="switch"><input type="checkbox" id="setAnalysisOn"><span class="slider"></span></label>
+        </div>
+        <div class="hint">Kalau aktif, setiap jawaban AI disertai analisis tambahan.</div>
+        <div class="fgroup">
+          <label>Ambang outstanding besar (Rp)</label>
+          <input id="setThresholdOs" type="number" placeholder="10000000">
+        </div>
+        <div class="fgroup">
+          <label>Ambang hari "lama tidak dikunjungi"</label>
+          <input id="setThresholdDays" type="number" placeholder="30">
+        </div>
+        <button class="btn-primary" id="btnSaveAnalysis">Simpan Pengaturan Analisis</button>
+      </div>
+
       <div id="settingsMsg"></div>
       <div style="height:14px"></div>
     </div>
@@ -351,9 +484,10 @@ body{
 
 <script>
 /* =====================================================================
-   TANYA KOPENA — v3
+   TANYA KOPENA — v4
    Master data: file upload (kalau ada) ATAU Google Sheets
-   Data pelengkap: Firebase Buku Kunjungan + Laporan Marketing
+   Pelengkap: Firebase Buku Kunjungan + Laporan Marketing
+   Fitur: Rules, Corrections, Analysis, Photo Auto-Show
    ===================================================================== */
 
 /* ------------------------- 1. KONFIGURASI ------------------------- */
@@ -394,13 +528,11 @@ function num(v){
   return isNaN(n) ? 0 : n;
 }
 
-/* ============ PARSING REKENING ============ */
+/* ==== PARSING REKENING ==== */
 const AWALAN_SUKARELA = '211';
-const AWALAN_PINJAMAN = ['541','542','543','544','551','111','211'];
+const AWALAN_PINJAMAN = ['541','542','543','544','551','111'];
 
-function cleanRek(rek){
-  return String(rek || '').replace(/\D/g, '');
-}
+function cleanRek(rek){ return String(rek || '').replace(/\D/g, ''); }
 function getBaseID(rek){
   const r = cleanRek(rek);
   return r.length >= 10 ? r.slice(3) : null;
@@ -408,8 +540,7 @@ function getBaseID(rek){
 function isPinjaman(rek){
   const r = cleanRek(rek);
   if(r.length < 10) return false;
-  const aw = r.slice(0, 3);
-  return aw !== AWALAN_SUKARELA && AWALAN_PINJAMAN.includes(aw);
+  return AWALAN_PINJAMAN.includes(r.slice(0, 3));
 }
 function isSukarela(rek){
   return cleanRek(rek).slice(0, 3) === AWALAN_SUKARELA;
@@ -424,7 +555,7 @@ function rekeningSukarela(listRek){
   return listRek.find(isSukarela) || '';
 }
 
-/* ============ NORMALISASI NAMA ============ */
+/* ==== NORMALISASI NAMA ==== */
 function normNama(s){
   let t = String(s || '').toUpperCase();
   t = t.replace(/\b(H|HJ|HAJI|HAJAH|MUH|MOH|MOHAMMAD|MUHAMMAD|ABD|ABDUL|RADEN|MAS|MBAH|PAK|BU|BAPAK|IBU|SDR|SDRI|BPK|NY|NN|TUAN|NYONYA)\.?\s+/g, ' ');
@@ -435,7 +566,7 @@ function norm(s){
   return String(s || '').toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-/* ============ LEVENSHTEIN ============ */
+/* ==== LEVENSHTEIN ==== */
 function levenshtein(a, b){
   if(a === b) return 0;
   if(!a.length) return b.length;
@@ -445,15 +576,13 @@ function levenshtein(a, b){
   for(let j = 0; j <= a.length; j++) m[0][j] = j;
   for(let i = 1; i <= b.length; i++){
     for(let j = 1; j <= a.length; j++){
-      m[i][j] = b[i-1] === a[j-1]
-        ? m[i-1][j-1]
-        : Math.min(m[i-1][j-1]+1, m[i][j-1]+1, m[i-1][j]+1);
+      m[i][j] = b[i-1] === a[j-1] ? m[i-1][j-1] : Math.min(m[i-1][j-1]+1, m[i][j-1]+1, m[i-1][j]+1);
     }
   }
   return m[b.length][a.length];
 }
 
-/* ============ FOTO ============ */
+/* ==== FOTO ==== */
 function toArray(v){
   if(!v) return [];
   if(Array.isArray(v)) return v.filter(Boolean);
@@ -482,23 +611,20 @@ function extractFotos(v){
   return [];
 }
 
-/* ============ FORMAT ============ */
+/* ==== FORMAT ==== */
 function fmtRp(v){
   const n = Math.round(num(v));
   if(Math.abs(n) >= 1e9) return 'Rp ' + (n/1e9).toFixed(2) + ' M';
   if(Math.abs(n) >= 1e6) return 'Rp ' + (n/1e6).toFixed(2) + ' jt';
   return 'Rp ' + n.toLocaleString('id-ID');
 }
-function fmtRpFull(v){
-  return 'Rp ' + Math.round(num(v)).toLocaleString('id-ID');
-}
+function fmtRpFull(v){ return 'Rp ' + Math.round(num(v)).toLocaleString('id-ID'); }
 const BULAN = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 function fmtTgl(iso){
   if(!iso) return '-';
   const s = String(iso).slice(0, 10);
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if(!m){
-    // format d-m-Y (dari file XLS)
     const m2 = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
     if(m2) return m2[1] + ' ' + BULAN[parseInt(m2[2],10)-1] + ' ' + m2[3];
     return s;
@@ -576,14 +702,8 @@ let AO_LIST = [];
 
 /* ------------------------- 4. FIREBASE ------------------------- */
 let bkDb = null, mkDb = null;
-try {
-  firebase.initializeApp(CFG_BK);
-  bkDb = firebase.database();
-} catch(e){ console.error('Init BK gagal', e); }
-try {
-  const mkApp = firebase.initializeApp(CFG_MK, 'kopena-mk');
-  mkDb = mkApp.database();
-} catch(e){ console.error('Init MK gagal', e); }
+try { firebase.initializeApp(CFG_BK); bkDb = firebase.database(); } catch(e){ console.error(e); }
+try { const mkApp = firebase.initializeApp(CFG_MK, 'kopena-mk'); mkDb = mkApp.database(); } catch(e){ console.error(e); }
 
 function parseJsonSafe(v){
   if(v == null) return null;
@@ -606,10 +726,7 @@ function listenBK(){
     DB.bkDetail = out;
     DB.ready.bk = true;
     rebuild();
-  }, err => {
-    console.warn('BK error', err);
-    DB.ready.bk = false;
-  });
+  }, err => { console.warn('BK error', err); DB.ready.bk = false; });
 }
 function listenMK(){
   if(!mkDb) return;
@@ -618,10 +735,7 @@ function listenMK(){
     DB.marketing = Object.entries(val).map(([k, r]) => Object.assign({}, r, { _id: k }));
     DB.ready.mk = true;
     rebuild();
-  }, err => {
-    console.warn('MK error', err);
-    DB.ready.mk = false;
-  });
+  }, err => { console.warn('MK error', err); DB.ready.mk = false; });
   mkDb.ref('aoOverride').on('value', snap => {
     DB.aoOverride = snap.val() || {};
     rebuild();
@@ -637,7 +751,7 @@ async function fetchMaster(){
     DB.ready.sheet = true;
     rebuild();
   } catch(e){
-    console.warn('Master data gagal dimuat', e);
+    console.warn('Master gagal dimuat', e);
     DB.ready.sheet = false;
   }
 }
@@ -648,8 +762,8 @@ const UPLOAD_KEY = 'tanyakopena_uploaded_v2';
 const KOLOM_ALIAS = {
   no_rekening:      ['no_rekening','norek','rekening','no rek','no. rekening','nomor rekening','rek','no pinjaman','nomor pinjaman'],
   nama:             ['nama','nama anggota','nama nasabah','nama debitur','debitur','nasabah','anggota'],
-  alamat:           ['alamat','alamat lengkap','alamat nasabah','alamat anggota'],
-  ao:               ['ao','nama ao','petugas','marketing','nama marketing','nama petugas'],
+  alamat:           ['alamat','alamat lengkap'],
+  ao:               ['ao','nama ao','petugas','marketing','nama marketing'],
   plafon:           ['plafon','plafond','jumlah pinjaman','pokok pinjaman','nilai pinjaman','limit'],
   saldo:            ['saldo','outstanding','sisa pokok','sisa pinjaman','os','sisa','saldo akhir'],
   angsuran_bulanan: ['angsuran','angsuran per bulan','angsuran/bulan','angsuran bulanan','angsuran/bln','cicilan'],
@@ -658,7 +772,7 @@ const KOLOM_ALIAS = {
   tgl_jatuh_tempo:  ['tgl jatuh tempo','tanggal jatuh tempo','jatuh tempo','tgl jt','jt'],
   pembayaran_pokok: ['pembayaran pokok','bayar pokok','setoran pokok','pokok dibayar','pokok'],
   pembayaran_margin:['pembayaran margin','bayar margin','setoran margin','margin dibayar','margin'],
-  no_hp:            ['no hp','no. hp','telepon','telp','hp','wa','whatsapp','no wa','handphone'],
+  no_hp:            ['no hp','no. hp','telepon','telp','hp','wa','whatsapp','no wa'],
   sudah_angsur:     ['sudah angsur','sudah bayar','status bayar']
 };
 
@@ -676,14 +790,11 @@ function normalizeRow(row){
   const out = {};
   for(const [k, v] of Object.entries(row)){
     const std = matchHeader(k);
-    if(std && v !== undefined && v !== null && String(v).trim() !== ''){
-      out[std] = v;
-    }
+    if(std && v !== undefined && v !== null && String(v).trim() !== '') out[std] = v;
   }
   return out;
 }
 
-/* === Parser Excel XML (SpreadsheetML) — format TAGIHAN MITRA USAHA === */
 function isExcelXml(text){
   const head = String(text).slice(0, 2000);
   return /<\?xml/i.test(head) && /schemas-microsoft-com:office:spreadsheet/i.test(String(text).slice(0, 5000));
@@ -741,51 +852,34 @@ function parseTunggakanXlsXml(text){
     const ao = cells[16];
 
     records.push({
-      no_rekening,
-      nama,
-      plafon,
-      saldo,
-      produk: currentProduk,
-      ao,
-      angsuran_bulanan,
-      alamat: '',
-      sisa_pokok: sisa_pokok_akhir,
-      pembayaran_pokok,
-      pembayaran_margin,
+      no_rekening, nama, plafon, saldo,
+      produk: currentProduk, ao, angsuran_bulanan,
+      alamat: '', sisa_pokok: sisa_pokok_akhir,
+      pembayaran_pokok, pembayaran_margin,
       sisa_pokok_akhir,
       sisa_total_akhir: tunggakan_akhir_pokok + tunggakan_akhir_margin,
       tgl_jatuh_tempo,
       kode_produk: currentKodeProduk,
       sudah_angsur: (pembayaran_pokok > 0 || pembayaran_margin > 0),
-      coll,
-      cabang,
+      coll, cabang,
       kode_tipe: currentKodeProduk.startsWith('1') ? '1' : '5',
-      margin_rate: 0,
-      tgl_mulai: '',
-      no_akad: '',
-      no_rekening_terkait: '',
-      nama_terkait: '',
-      kode_ao: '',
+      margin_rate: 0, tgl_mulai: '', no_akad: '',
       saldo_pokok_net: tunggakan_akhir_pokok,
       saldo_total_net: tunggakan_akhir_pokok + tunggakan_akhir_margin
     });
   }
   return records;
 }
-
-/* === Parser Excel binary (.xlsx) === */
 async function parseExcel(file){
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: 'array', cellDates: true });
   const sh = wb.Sheets[wb.SheetNames[0]];
   const raw = XLSX.utils.sheet_to_json(sh, { defval: '' });
-  if(!raw.length) throw new Error('File kosong atau tidak ada baris data.');
+  if(!raw.length) throw new Error('File kosong.');
   const rows = raw.map(normalizeRow).filter(r => r.nama || r.no_rekening);
   if(!rows.length) throw new Error('Tidak ada kolom "nama" atau "no_rekening" yang cocok.');
   return rows;
 }
-
-/* === Parser CSV === */
 function parseCSVLine(line){
   const out = []; let cur = ''; let q = false;
   for(let i=0;i<line.length;i++){
@@ -817,8 +911,6 @@ function parseCSVText(text){
   if(!rows.length) throw new Error('Tidak ada baris data yang valid.');
   return rows;
 }
-
-/* === Parser PDF === */
 async function parsePDF(file){
   const buf = await file.arrayBuffer();
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
@@ -836,7 +928,7 @@ async function parsePDF(file){
     const matched = cells.filter(c => matchHeader(c)).length;
     if(matched >= 3){ headerIdx = i; headers = cells; break; }
   }
-  if(headerIdx < 0) throw new Error('PDF tidak dikenali. Pastikan PDF hasil cetak tabel, bukan scan.');
+  if(headerIdx < 0) throw new Error('PDF tidak dikenali. Konversi ke Excel dulu.');
   const rows = [];
   for(let i = headerIdx + 1; i < lines.length; i++){
     const cells = lines[i].split(/\s*\|\s*|\t|  +/).filter(Boolean);
@@ -849,66 +941,39 @@ async function parsePDF(file){
   if(!rows.length) throw new Error('PDF terbaca tapi tidak ada baris data yang cocok.');
   return rows;
 }
-
-/* === Auto-detect & dispatch === */
 async function parseAnyFile(file){
   const name = String(file.name || '').toLowerCase();
   const ext = name.split('.').pop();
-
-  if(ext === 'pdf'){
-    return await parsePDF(file);
-  }
-
-  // Baca sebagai teks dulu untuk cek XML SpreadsheetML & CSV
+  if(ext === 'pdf') return await parsePDF(file);
   if(ext === 'xls' || ext === 'xlsx' || ext === 'xml' || ext === 'csv' || ext === 'txt'){
-    // Coba baca sebagai teks dulu (untuk XML SpreadsheetML)
     if(ext === 'xls' || ext === 'xml' || ext === 'csv' || ext === 'txt'){
       const text = await file.text();
       if(isExcelXml(text)){
         const rows = parseTunggakanXlsXml(text);
-        if(!rows.length) throw new Error('File XML SpreadsheetML terdeteksi tapi tidak ada data rekening terbaca.');
+        if(!rows.length) throw new Error('XML SpreadsheetML terdeteksi tapi tidak ada data.');
         return rows;
       }
-      if(ext === 'csv' || ext === 'txt'){
-        return parseCSVText(text);
-      }
-      // .xls yang bukan XML → coba SheetJS
-      try {
-        return await parseExcel(file);
-      } catch(e){
-        throw new Error('File .xls tidak dikenali. Kalau dari sistem lama, pastikan format XML SpreadsheetML.');
-      }
+      if(ext === 'csv' || ext === 'txt') return parseCSVText(text);
+      try { return await parseExcel(file); }
+      catch(e){ throw new Error('File .xls tidak dikenali.'); }
     }
-    // .xlsx → SheetJS
     return await parseExcel(file);
   }
-
-  throw new Error('Format tidak didukung. Gunakan .xlsx, .xls, .csv, .xml, atau .pdf');
+  throw new Error('Format tidak didukung. Gunakan .xlsx/.xls/.csv/.xml/.pdf');
 }
 
-/* === Simpan / muat / hapus upload === */
 function saveUploaded(rows, filename){
-  const payload = {
-    uploadedAt: Date.now(),
-    filename,
-    count: rows.length,
-    rows
-  };
+  const payload = { uploadedAt: Date.now(), filename, count: rows.length, rows };
   try {
     localStorage.setItem(UPLOAD_KEY, JSON.stringify(payload));
     DB.uploaded = payload;
   } catch(e){
-    // Kalau penuh, simpan versi slim
-    const slim = rows.map(r => {
-      const c = Object.assign({}, r);
-      delete c.hasil; delete c.catatan;
-      return c;
-    });
+    const slim = rows.map(r => { const c = Object.assign({}, r); delete c.hasil; return c; });
     try {
       localStorage.setItem(UPLOAD_KEY, JSON.stringify({ uploadedAt: Date.now(), filename, count: rows.length, rows: slim }));
       DB.uploaded = { uploadedAt: Date.now(), filename, count: rows.length, rows: slim };
     } catch(e2){
-      throw new Error('Penyimpanan HP penuh. Hapus upload sebelumnya dulu lewat Pengaturan.');
+      throw new Error('Penyimpanan HP penuh. Hapus upload sebelumnya.');
     }
   }
 }
@@ -918,16 +983,10 @@ function loadUploaded(){
     DB.uploaded = (j && Array.isArray(j.rows)) ? j : null;
   } catch(e){ DB.uploaded = null; }
 }
-function clearUploaded(){
-  localStorage.removeItem(UPLOAD_KEY);
-  DB.uploaded = null;
-}
+function clearUploaded(){ localStorage.removeItem(UPLOAD_KEY); DB.uploaded = null; }
 
-/* === Master efektif: upload (kalau ada) MENGGANTIKAN total Sheets === */
 function getEffectiveMaster(){
-  if(DB.uploaded && Array.isArray(DB.uploaded.rows) && DB.uploaded.rows.length){
-    return DB.uploaded.rows;
-  }
+  if(DB.uploaded && Array.isArray(DB.uploaded.rows) && DB.uploaded.rows.length) return DB.uploaded.rows;
   return DB.master;
 }
 function masterSourceLabel(){
@@ -938,6 +997,22 @@ function masterSourceLabel(){
 }
 
 /* ------------------------- 6. REBUILD ------------------------- */
+function isSameNama(a, b){
+  const na = normNama(a), nb = normNama(b);
+  if(!na || !nb) return false;
+  if(na === nb) return true;
+  if(Math.min(na.length, nb.length) >= 6 && levenshtein(na, nb) <= 2) return true;
+  const wa = na.split(' ').filter(x => x.length >= 3);
+  const wb = nb.split(' ').filter(x => x.length >= 3);
+  if(!wa.length || !wb.length) return false;
+  let cocok = 0;
+  wa.forEach(w => {
+    if(wb.some(t => t === w)) cocok += 1;
+    else if(wb.some(t => t.length >= 4 && levenshtein(w, t) <= 1)) cocok += 0.8;
+  });
+  return (cocok / Math.max(wa.length, wb.length)) >= 0.65;
+}
+
 function rebuild(){
   PROFILES = [];
   BY_REK = new Map();
@@ -946,73 +1021,33 @@ function rebuild(){
 
   function newProfile(nama){
     const p = {
-      nama: nama || '(tanpa nama)',
-      key: normNama(nama || ''),
-      reks: [],
-      norek: '',
-      pinjamanAktif: '',
-      master: null,
-      bk: null,
-      visits: [],
-      reports: [],
-      ao: '',
-      alamat: '',
-      wa: '',
-      sumberNama: '',
-      sumberAlamat: '',
-      sumberAO: '',
-      lastUpdate: 0
+      nama: nama || '(tanpa nama)', key: normNama(nama || ''),
+      reks: [], norek: '', pinjamanAktif: '',
+      master: null, bk: null, visits: [], reports: [],
+      ao: '', alamat: '', wa: '',
+      sumberNama: '', sumberAlamat: '', sumberAO: '', lastUpdate: 0
     };
     PROFILES.push(p);
     return p;
   }
-
-  /* Cari profil dari rekening / base ID / nama (fuzzy) */
   function findProfile(rek, nama){
     const clean = cleanRek(rek);
     if(clean && BY_REK.has(clean)) return BY_REK.get(clean);
-
     const base = getBaseID(rek);
     if(base && BY_BASE.has(base)){
-      // Verifikasi: kalau nama beda jauh, tetap tolak
       const p = BY_BASE.get(base);
       if(!nama || isSameNama(nama, p.nama)) return p;
     }
-
-    // Fuzzy by nama
     if(nama && nama.length >= 4){
       const key = normNama(nama);
       if(BY_NAME.has(key)) return BY_NAME.get(key);
-      // Fuzzy
-      for(const p of PROFILES){
-        if(isSameNama(nama, p.nama)) return p;
-      }
+      for(const p of PROFILES) if(isSameNama(nama, p.nama)) return p;
     }
     return null;
   }
-
-  function isSameNama(a, b){
-    const na = normNama(a), nb = normNama(b);
-    if(!na || !nb) return false;
-    if(na === nb) return true;
-    if(Math.min(na.length, nb.length) >= 6 && levenshtein(na, nb) <= 2) return true;
-    const wa = na.split(' ').filter(x => x.length >= 3);
-    const wb = nb.split(' ').filter(x => x.length >= 3);
-    if(!wa.length || !wb.length) return false;
-    let cocok = 0;
-    wa.forEach(w => {
-      if(wb.some(t => t === w)) cocok += 1;
-      else if(wb.some(t => t.length >= 4 && levenshtein(w, t) <= 1)) cocok += 0.8;
-    });
-    return (cocok / Math.max(wa.length, wb.length)) >= 0.65;
-  }
-
   function getOrCreate(rek, nama){
     let p = findProfile(rek, nama);
-    if(!p){
-      p = newProfile(nama);
-    }
-    // Daftarkan rekening
+    if(!p) p = newProfile(nama);
     const clean = cleanRek(rek);
     if(clean && !p.reks.includes(clean)) p.reks.push(clean);
     if(clean) BY_REK.set(clean, p);
@@ -1025,32 +1060,20 @@ function rebuild(){
     return p;
   }
 
-  /* ===== PASS 1: MASTER (upload atau Sheets) ===== */
+  // PASS 1: MASTER
   getEffectiveMaster().forEach(m => {
     const norek = cleanRek(m.no_rekening || m['No Rekening'] || m.rekening || '');
     const nama = String(m.nama || m['Nama Anggota'] || m['Nama'] || '').trim();
     if(!norek && !nama) return;
-
     const p = getOrCreate(norek, nama);
-
-    // Kalau profil ini sudah punya master → ganti dengan yang nomor pinjamannya lebih besar
-    // (asumsi: nomor pinjaman lebih besar = lebih baru)
     if(p.master){
-      const norekLama = cleanRek(p.master.no_rekening || '');
-      const norekBaru = cleanRek(norek);
-      if(norekBaru.length && norekLama.length && Number(norekBaru) > Number(norekLama)){
-        p.master = m;
-      }
+      const oldRek = cleanRek(p.master.no_rekening || '');
+      const newRek = cleanRek(norek);
+      if(newRek.length && oldRek.length && Number(newRek) > Number(oldRek)) p.master = m;
     } else {
       p.master = m;
     }
-
-    // Nama: master selalu menang
-    if(nama){
-      p.nama = nama;
-      p.key = normNama(nama);
-      p.sumberNama = 'master';
-    }
+    if(nama){ p.nama = nama; p.key = normNama(nama); p.sumberNama = 'master'; }
     const al = String(m.alamat || m['Alamat'] || '').trim();
     if(al){ p.alamat = al; p.sumberAlamat = 'master'; }
     const ao = String(m.ao || m['Nama AO'] || '').trim();
@@ -1059,49 +1082,33 @@ function rebuild(){
     if(wa) p.wa = wa;
   });
 
-  /* ===== PASS 2: BUKU KUNJUNGAN ===== */
+  // PASS 2: BUKU KUNJUNGAN
   DB.bkNasabah.forEach(n => {
     const norekP = cleanRek(n.rekPembiayaan || '');
     const norekS = cleanRek(n.rekSimpanan || '');
     const norek = norekS || norekP;
-
-    let p = null;
-    if(norek) p = findProfile(norek, n.nama);
+    let p = norek ? findProfile(norek, n.nama) : null;
     if(!p && n.nama) p = findProfile('', n.nama);
     if(!p){
       p = newProfile(n.nama);
-      if(norek){
-        const clean = cleanRek(norek);
-        if(clean) { p.reks.push(clean); BY_REK.set(clean, p); }
-      }
+      if(norek){ const c = cleanRek(norek); if(c){ p.reks.push(c); BY_REK.set(c, p); } }
       if(n.nama) BY_NAME.set(normNama(n.nama), p);
     }
-
     p.bk = n;
-
-    if(n.nama && !p.sumberNama){
-      p.nama = n.nama;
-      p.key = normNama(n.nama);
-      p.sumberNama = 'bk';
-    }
+    if(n.nama && !p.sumberNama){ p.nama = n.nama; p.key = normNama(n.nama); p.sumberNama = 'bk'; }
     if(n.alamat && !p.sumberAlamat){ p.alamat = n.alamat; p.sumberAlamat = 'bk'; }
     if(n.ao && !p.sumberAO){ p.ao = n.ao; p.sumberAO = 'bk'; }
     if(n.noWa && !p.wa) p.wa = n.noWa;
-
     if(norekP){ const c = cleanRek(norekP); if(c && !p.reks.includes(c)) p.reks.push(c); if(c) BY_REK.set(c, p); }
     if(norekS){ const c = cleanRek(norekS); if(c && !p.reks.includes(c)) p.reks.push(c); if(c) BY_REK.set(c, p); }
-
     const det = DB.bkDetail[n.id];
     if(det){
       toArray(det.kunjungan).forEach(v => {
         if(v && !v.deletedAt){
           p.visits.push({
-            sumber: 'buku',
-            tanggal: v.tanggal || '',
-            hasil: v.hasil || '',
-            lokasi: v.location || null,
-            fotos: extractFotos(v),
-            ao: n.ao || '',
+            sumber: 'buku', tanggal: v.tanggal || '',
+            hasil: v.hasil || '', lokasi: v.location || null,
+            fotos: extractFotos(v), ao: n.ao || '',
             ts: v.updatedAt || v.createdAt || 0
           });
         }
@@ -1109,64 +1116,42 @@ function rebuild(){
     }
   });
 
-  /* ===== PASS 3: LAPORAN MARKETING ===== */
+  // PASS 3: LAPORAN MARKETING
   DB.marketing.forEach(r => {
     const norek = cleanRek(r.norek || '');
     const nama = String(r.debitur || '').trim();
-
-    let p = null;
-    if(norek) p = findProfile(norek, nama);
+    let p = norek ? findProfile(norek, nama) : null;
     if(!p && nama) p = findProfile('', nama);
     if(!p){
       p = newProfile(nama);
-      if(norek){
-        const c = cleanRek(norek);
-        if(c) { p.reks.push(c); BY_REK.set(c, p); }
-      }
+      if(norek){ const c = cleanRek(norek); if(c){ p.reks.push(c); BY_REK.set(c, p); } }
       if(nama) BY_NAME.set(normNama(nama), p);
     }
-
-    if(nama && !p.sumberNama){
-      p.nama = nama;
-      p.key = normNama(nama);
-      p.sumberNama = 'marketing';
-    }
+    if(nama && !p.sumberNama){ p.nama = nama; p.key = normNama(nama); p.sumberNama = 'marketing'; }
     if(r.ao && !p.sumberAO){ p.ao = r.ao; p.sumberAO = 'marketing'; }
-
     if(norek){ if(!p.reks.includes(norek)) p.reks.push(norek); BY_REK.set(norek, p); }
-
     p.reports.push({
-      sumber: 'marketing',
-      id: r._id,
-      tanggal: r.tanggal || '',
-      hasil: r.hasil || '',
-      status: r.status || '',
-      target: r.target || '',
-      ao: r.ao || '',
-      lokasi: r.lokasi || null,
+      sumber: 'marketing', id: r._id,
+      tanggal: r.tanggal || '', hasil: r.hasil || '',
+      status: r.status || '', target: r.target || '',
+      ao: r.ao || '', lokasi: r.lokasi || null,
       fotos: extractFotos(r),
       createdAt: r.createdAt || 0,
       ts: r.updatedAt || r.createdAt || 0
     });
   });
 
-  /* ===== PASS 4: BERES-BERES ===== */
+  // PASS 4: BERES-BERES
   PROFILES.forEach(p => {
     p.reks = [...new Set(p.reks.filter(Boolean))];
     p.norek = rekeningSukarela(p.reks) || (p.master ? cleanRek(p.master.no_rekening) : '');
     p.pinjamanAktif = pinjamanTerbesar(p.reks) || '';
-
     p.reks.forEach(r => {
       const o = DB.aoOverride[r];
       if(o && o.ao) p.ao = o.ao;
     });
-
     p.visits.sort((a,b) => (b.tanggal||'').localeCompare(a.tanggal||''));
-    p.reports.sort((a,b) =>
-      (b.tanggal||'').localeCompare(a.tanggal||'') ||
-      (b.createdAt||0) - (a.createdAt||0)
-    );
-
+    p.reports.sort((a,b) => (b.tanggal||'').localeCompare(a.tanggal||'') || (b.createdAt||0) - (a.createdAt||0));
     let ts = 0;
     p.visits.forEach(v => { if(v.ts > ts) ts = v.ts; });
     p.reports.forEach(r => { if(r.ts > ts) ts = r.ts; });
@@ -1176,7 +1161,6 @@ function rebuild(){
   const aoSet = new Set();
   PROFILES.forEach(p => { if(p.ao && p.ao !== 'TANPA NAMA') aoSet.add(p.ao); });
   AO_LIST = [...aoSet].sort((a,b) => a.localeCompare(b, 'id'));
-
   updateSourceStatus();
 }
 
@@ -1209,24 +1193,17 @@ function scoreMatch(q, target){
     else if(bt.some(t => t.startsWith(w) && w.length >= 3)) hit += 0.75;
     else if(w.length >= 4 && bt.some(t => t.includes(w))) hit += 0.5;
   });
-
   const dist = levenshtein(a, b);
-  if(dist <= 2 && Math.min(a.length, b.length) >= 4){
-    return 65 + (2 - dist) * 10;
-  }
+  if(dist <= 2 && Math.min(a.length, b.length) >= 4) return 65 + (2 - dist) * 10;
   const qt2 = a.split(' ').filter(w => w.length >= 4);
   let fuzzyHit = 0;
-  qt2.forEach(w => {
-    if(bt.some(t => t.length >= 4 && levenshtein(w, t) <= 1)) fuzzyHit += 1;
-  });
+  qt2.forEach(w => { if(bt.some(t => t.length >= 4 && levenshtein(w, t) <= 1)) fuzzyHit += 1; });
   if(fuzzyHit > 0 && qt2.length > 0){
     return Math.max(hit ? 30 + (hit/qt.length)*45 : 0, 40 + (fuzzyHit/qt2.length)*30);
   }
-
   if(!hit) return 0;
   return 30 + (hit / qt.length) * 45;
 }
-
 function searchProfiles(query, limit){
   const q = String(query || '').trim();
   if(!q) return [];
@@ -1248,7 +1225,7 @@ function searchProfiles(query, limit){
   return scored.slice(0, limit || 8).map(x => x.p);
 }
 
-/* ------------------------- 8. EKSTRAKSI ENTITAS ------------------------- */
+/* ------------------------- 8. EKSTRAKSI ------------------------- */
 const STOPWORDS = new Set([
   'cari','carikan','data','info','informasi','nasabah','anggota','debitur','riwayat','kunjungan',
   'histori','history','siapa','apa','apakah','bagaimana','gimana','di','ke','dari','untuk','yang',
@@ -1261,9 +1238,8 @@ const STOPWORDS = new Set([
   'besar','kecil','tinggi','rendah','coll','desa','alamat','wilayah','daerah','kecamatan','dusun',
   'nasabahnya','semuanya','sebutkan','sebut','kasih','beri','tolong','mohon','silakan','cek','lihatkan',
   'angsurn','nyicil','nyetor','cicil','cicilan','setor','setoran','pembayaran','nominal','uang',
-  'atas','namanya','nama','saudara','sdr','sdri','mas','mbak','si','sang','kepada','ambil','pakai'
+  'atas','namanya','nama','saudara','sdr','sdri','mas','mbak','si','sang','kepada','foto','photo','gambar'
 ]);
-
 function extractNameCandidate(text){
   let t = String(text).toLowerCase();
   t = t.replace(/\b(atas\s+nama|dengan\s+nama|namanya|nama|pak|bapak|bu|ibu|mas|mbak|saudara|sdr|sdri|sdr\.|sdri\.|untuk|si|sang|kepada|dari)\s+/gi, ' ');
@@ -1321,25 +1297,22 @@ function detectIntent(text){
   const t = ' ' + String(text).toLowerCase().replace(/[^\w\s\/:\-]/g, ' ').replace(/\s+/g, ' ') + ' ';
   const has = (...ws) => ws.some(w => t.includes(w));
 
-  // Total nasabah — khusus
-  if(/(total|jumlah|berapa|ada)\s+(nasabah|anggota|orang)/.test(t) ||
-     /(berapa|jumlah)\s+banyak\s+(nasabah|anggota)/.test(t)){
-    return 'total_nasabah';
-  }
-
+  if(/(total|jumlah|berapa|ada)\s+(nasabah|anggota|orang)/.test(t) || /(berapa|jumlah)\s+banyak\s+(nasabah|anggota)/.test(t)) return 'total_nasabah';
   if(has('bantuan','help','panduan','bisa apa','cara pakai','menu','contoh pertanyaan','fitur')) return 'bantuan';
+  if(has('analisa','analisis','kondisi kita','menurutmu','rekomendasi aksi','prediksi','perkiraan','potensi','risiko keseluruhan')) return 'analisa';
   if(has('janji bayar','janji','sanggup bayar','mau bayar','akan bayar','berjanji')) return 'janji';
   if(has('angsuran','angsurn','nyicil','nyetor','cicil','cicilan','sudah bayar','sudah setor','sudah angsur','pembayaran','setoran')) return 'angsuran';
-  if(has('belum dikunjungi','belum dikunjung','belum ada kunjungan','belum pernah dikunjungi','belum dilaporkan','belum pernah dikunjung')) return 'belum';
+  if(has('belum dikunjungi','belum dikunjung','belum ada kunjungan','belum pernah dikunjungi','belum dilaporkan')) return 'belum';
   if(has('tunggakan','nunggak','macet',' coll ',' outstanding','piutang','saldo besar','terbesar','pinjaman besar')) return 'tunggakan';
   if(has('rekap ao','kinerja ao','per ao','oleh ao','setiap ao','masing masing ao')) return 'rekap_ao';
   if(has('statistik','ringkasan','summary','rekap total','total kunjungan')) return 'statistik';
+  if(has('foto','photo','gambar','dokumentasi')) return 'foto';
   if(has('riwayat','histori','history','kapan dikunjungi','hasil kunjungan','sudah dikunjungi','catatan kunjungan')) return 'riwayat';
   if(has('desa ','ds.','ds ','dusun','wilayah','daerah','kecamatan','tinggal di','alamatnya')) return 'alamat';
   return 'cari';
 }
 
-/* ------------------------- 10. KOMPONEN KARTU ------------------------- */
+/* ------------------------- 10. KARTU & KOMPONEN ------------------------- */
 function badge(text, cls){ return '<span class="badge ' + (cls||'') + '">' + esc(text) + '</span>'; }
 
 function renderFotoStrip(fotos, big){
@@ -1419,12 +1392,10 @@ function profileSummaryCard(p){
   if(m.coll !== undefined && m.coll !== null && m.coll !== '') badges += badge('Coll ' + m.coll, num(m.coll) >= 3 ? 'red' : (num(m.coll) === 0 ? 'green' : 'amber'));
   if(os > 0) badges += badge('OS ' + fmtRp(os), 'amber');
   badges += badge(visits ? visits + '× dikunjungi' : 'Belum dikunjungi', visits ? 'green' : 'grey');
-
   let fotoCount = 0;
   p.visits.forEach(v => { if(v.fotos && v.fotos.length) fotoCount += v.fotos.length; });
   p.reports.forEach(r => { if(r.fotos && r.fotos.length) fotoCount += r.fotos.length; });
   if(fotoCount) badges += badge('📷 ' + fotoCount + ' foto', 'grey');
-
   return '' +
     '<div class="res-card" data-nama="' + esc(p.nama) + '">' +
       '<div class="rc-top">' +
@@ -1475,7 +1446,7 @@ function fullProfileHtml(p){
         '</div>' +
         '<div class="tl-text">' + esc(v.hasil || '(tanpa catatan)') + '</div>' +
         (v.ao ? '<div class="tl-meta">AO: ' + esc(v.ao) + '</div>' : '') +
-        (v.lokasi && v.lokasi.lat ? '<div class="tl-meta"><a href="' + mapsCoord(v.lokasi.lat, v.lokasi.lng) + '" target="_blank" rel="noopener">📍 Buka lokasi di Maps</a></div>' : '') +
+        (v.lokasi && v.lokasi.lat ? '<div class="tl-meta"><a href="' + mapsCoord(v.lokasi.lat, v.lokasi.lng) + '" target="_blank" rel="noopener">📍 Buka lokasi</a></div>' : '') +
         renderFotoStrip(v.fotos, false) +
       '</div>';
     });
@@ -1494,7 +1465,237 @@ function fullProfileHtml(p){
   return html;
 }
 
-/* ------------------------- 11. HANDLER ------------------------- */
+/* ============ MODUL: ATURAN, CONTOH, KOREKSI, ANALISIS ============ */
+const RULES_KEY = 'tanyakopena_rules_v1';
+const EXAMPLES_KEY = 'tanyakopena_examples_v1';
+const CORRECTIONS_KEY = 'tanyakopena_corrections_v1';
+const ANALYSIS_CFG_KEY = 'tanyakopena_analysis_cfg_v1';
+
+const DEFAULT_RULES =
+  '- Nasabah dengan Coll >= 3 = PRIORITAS kunjungan. Sebut status ini di jawaban.\n' +
+  '- Kalau nasabah belum bayar >2 bulan dan belum pernah dikunjungi → sebut sebagai "urgent".\n' +
+  '- Kalau angsuran > Rp 5.000.000 dan belum bayar → highlight lebih tebal.\n' +
+  '- Kalau ada Janji Bayar yang target-nya sudah lewat >7 hari → sebut "perlu follow up".\n' +
+  '- Kalau nasabah punya >1 pinjaman aktif → total outstanding harus dijumlah.\n' +
+  '- Kalau ditanya "berapa nasabah" → ambil dari master, bukan dari Firebase.\n' +
+  '- Kalau nama tidak ketemu persis → cari yang mirip, sebut "mungkin maksudmu X?".';
+
+const DEFAULT_EXAMPLES =
+  'Q: Bu Sri udah bayar belum?\n' +
+  'A: Bu Sri (rek 541052001586) belum ada catatan bayar bulan ini. Angsuran wajibnya Rp 9.479.167. Terakhir janji bayar 3 Okt, tapi belum ada laporan setoran.\n\n' +
+  'Q: Siapa aja yang coll 3?\n' +
+  'A: Ada 19 nasabah coll 3, total outstandingnya Rp 850 jt. Yang terbesar: Ahmad (Rp 200 jt), Surip (Rp 140 jt), Wati (Rp 90 jt).';
+
+const DEFAULT_ANALYSIS = { analysisOn: false, thresholdOs: 10000000, thresholdDays: 30 };
+
+function loadRules(){ return localStorage.getItem(RULES_KEY) || DEFAULT_RULES; }
+function saveRules(v){ localStorage.setItem(RULES_KEY, v || ''); }
+function loadExamples(){ return localStorage.getItem(EXAMPLES_KEY) || DEFAULT_EXAMPLES; }
+function saveExamples(v){ localStorage.setItem(EXAMPLES_KEY, v || ''); }
+function loadCorrections(){
+  try { return JSON.parse(localStorage.getItem(CORRECTIONS_KEY) || '[]'); } catch(e){ return []; }
+}
+function saveCorrections(list){
+  try { localStorage.setItem(CORRECTIONS_KEY, JSON.stringify(list.slice(-60))); } catch(e){}
+}
+function addCorrection(q, wrong, right){
+  const list = loadCorrections();
+  list.push({ q: String(q).slice(0, 200), wrong: String(wrong).slice(0, 200), right: String(right).slice(0, 400), ts: Date.now() });
+  saveCorrections(list);
+}
+function buildCorrectionsPrompt(){
+  const list = loadCorrections();
+  if(!list.length) return '';
+  let p = '\nKOREKSI DARI PENGGUNA (JANGAN ULANGI KESALAHAN INI):\n';
+  list.slice(-8).forEach(c => {
+    p += 'Pertanyaan: ' + c.q + '\n';
+    p += 'Jawaban SALAH: ' + c.wrong + '\n';
+    p += 'Jawaban BENAR: ' + c.right + '\n\n';
+  });
+  return p;
+}
+function loadAnalysisCfg(){
+  try { return Object.assign({}, DEFAULT_ANALYSIS, JSON.parse(localStorage.getItem(ANALYSIS_CFG_KEY) || '{}')); }
+  catch(e){ return Object.assign({}, DEFAULT_ANALYSIS); }
+}
+function saveAnalysisCfg(c){ localStorage.setItem(ANALYSIS_CFG_KEY, JSON.stringify(c)); }
+
+function riskScore(p){
+  let score = 0;
+  const m = p.master || {};
+  const coll = num(m.coll);
+  const os = num(m.saldo);
+  const visits = p.visits.length + p.reports.length;
+  const cfg = loadAnalysisCfg();
+  if(coll >= 4) score += 40;
+  else if(coll === 3) score += 30;
+  else if(coll === 2) score += 15;
+  if(os > cfg.thresholdOs * 5) score += 30;
+  else if(os > cfg.thresholdOs) score += 20;
+  else if(os > cfg.thresholdOs / 2) score += 8;
+  if(visits === 0) score += 20;
+  const last = latestVisitDate(p);
+  if(last){
+    const daysSince = (Date.now() - new Date(last + 'T00:00:00').getTime()) / 86400000;
+    if(daysSince > cfg.thresholdDays * 2) score += 15;
+    else if(daysSince > cfg.thresholdDays) score += 8;
+  } else {
+    score += 10;
+  }
+  return Math.min(100, score);
+}
+
+function computeAnalytics(){
+  const cfg = loadAnalysisCfg();
+  const data = {};
+  const collDist = { 0:0, 1:0, 2:0, 3:0, 4:0, null:0 };
+  PROFILES.forEach(p => {
+    if(!p.master){ collDist.null++; return; }
+    const hasColl = p.master.coll !== undefined && p.master.coll !== null && p.master.coll !== '';
+    if(!hasColl){ collDist.null++; return; }
+    const c = num(p.master.coll);
+    if(collDist[c] !== undefined) collDist[c]++;
+    else collDist.null++;
+  });
+  data.collDist = collDist;
+  data.risky = PROFILES.filter(p => p.master)
+    .map(p => ({ p, score: riskScore(p) }))
+    .filter(x => x.score >= 40)
+    .sort((a,b) => b.score - a.score)
+    .slice(0, 20);
+  data.belum = PROFILES.filter(p => p.master && !p.visits.length && !p.reports.length);
+  const today = todayISO();
+  data.janjiLewat = DB.marketing.filter(r => r.status === 'Janji Bayar' && r.target && r.target < today);
+  data.totalKunjungan = PROFILES.reduce((s,p) => s + p.visits.length + p.reports.length, 0);
+  data.sudahKunjung = PROFILES.filter(p => p.visits.length + p.reports.length > 0).length;
+  const aoStat = {};
+  PROFILES.forEach(p => {
+    if(!p.ao) return;
+    if(!aoStat[p.ao]) aoStat[p.ao] = { visits: 0, bayar: 0, janji: 0, total: 0 };
+    aoStat[p.ao].visits += p.visits.length;
+    aoStat[p.ao].total += p.visits.length + p.reports.length;
+  });
+  DB.marketing.forEach(r => {
+    if(!r.ao) return;
+    if(!aoStat[r.ao]) aoStat[r.ao] = { visits: 0, bayar: 0, janji: 0, total: 0 };
+    if(r.status === 'Sudah Bayar') aoStat[r.ao].bayar++;
+    if(r.status === 'Janji Bayar') aoStat[r.ao].janji++;
+    aoStat[r.ao].total++;
+  });
+  data.aoStat = aoStat;
+  data.totalOS = PROFILES.reduce((s,p) => s + (p.master ? num(p.master.saldo) : 0), 0);
+  data.multiPinjaman = PROFILES.filter(p => p.reks.filter(isPinjaman).length > 1).slice(0, 15);
+  return data;
+}
+
+function buildAnalyticsContext(){
+  const a = computeAnalytics();
+  const parts = [];
+  parts.push('\n== DATA ANALISIS ==');
+  parts.push('Total nasabah: ' + PROFILES.length);
+  parts.push('Sudah dikunjungi: ' + a.sudahKunjung + ' (' + Math.round(a.sudahKunjung/Math.max(1,PROFILES.length)*100) + '%)');
+  parts.push('Total kunjungan: ' + a.totalKunjungan);
+  parts.push('Total outstanding: ' + fmtRpFull(a.totalOS));
+  parts.push('Distribusi Coll — 0: ' + a.collDist[0] + ' | 1: ' + a.collDist[1] + ' | 2: ' + a.collDist[2] + ' | 3: ' + a.collDist[3] + ' | 4: ' + a.collDist[4] + ' | tanpa data: ' + a.collDist.null);
+  if(a.risky.length){
+    parts.push('\nTOP 15 NASABAH RISIKO TINGGI:');
+    a.risky.slice(0, 15).forEach(x => {
+      const p = x.p;
+      const m = p.master || {};
+      const last = latestVisitDate(p);
+      parts.push('- [' + x.score + '] ' + p.nama + ' | OS: ' + fmtRp(num(m.saldo)) +
+        ' | Coll: ' + (m.coll ?? '-') + ' | AO: ' + (p.ao || '-') +
+        ' | Kunjungan: ' + (p.visits.length + p.reports.length) +
+        ' | Terakhir: ' + (last || 'belum pernah'));
+    });
+  }
+  if(a.janjiLewat.length){
+    parts.push('\nJANJI BAYAR LEWAT TARGET (' + a.janjiLewat.length + '):');
+    a.janjiLewat.slice(0, 15).forEach(r => {
+      parts.push('- ' + r.debitur + ' | target: ' + r.target + ' | AO: ' + r.ao);
+    });
+  }
+  if(a.belum.length){
+    parts.push('\nBELUM PERNAH DIKUNJUNGI (' + a.belum.length + ') — top outstanding:');
+    a.belum.slice().sort((x,y) => num(y.master.saldo) - num(x.master.saldo)).slice(0, 10).forEach(p => {
+      parts.push('- ' + p.nama + ' | OS: ' + fmtRp(num(p.master.saldo)) + ' | Coll: ' + (p.master.coll ?? '-') + ' | AO: ' + (p.ao || '-'));
+    });
+  }
+  const aoEntries = Object.entries(a.aoStat).sort((x,y) => y[1].total - x[1].total);
+  if(aoEntries.length){
+    parts.push('\nKINERJA PER AO:');
+    aoEntries.slice(0, 10).forEach(([ao, v]) => {
+      parts.push('- ' + ao + ': ' + v.total + ' kunjungan | ' + v.bayar + ' bayar | ' + v.janji + ' janji');
+    });
+  }
+  if(a.multiPinjaman.length){
+    parts.push('\nNASABAH DENGAN MULTI PINJAMAN:');
+    a.multiPinjaman.slice(0, 10).forEach(p => {
+      const pinj = p.reks.filter(isPinjaman);
+      parts.push('- ' + p.nama + ': ' + pinj.length + ' pinjaman | ' + pinj.join(', '));
+    });
+  }
+  return parts.join('\n');
+}
+
+/* ============ FOTO SECTION — FIX UTAMA ============ */
+function buildPhotoSection(text){
+  const cand = extractNameCandidate(text);
+  const range = extractDateRange(text);
+  const wantsPhoto = /foto|photo|gambar|dokumentasi/i.test(text);
+  const namaOrang = cand && cand.length >= 3 ? searchProfiles(cand, 3) : [];
+
+  const photos = [];
+
+  // Kalau ada nama orang → fokus ke orang itu
+  if(namaOrang.length){
+    namaOrang.forEach(p => {
+      allTimeline(p).forEach(v => {
+        if(v.fotos && v.fotos.length){
+          photos.push({ p, v, fotos: v.fotos });
+        }
+      });
+    });
+  } else if(range){
+    // Filter by date range
+    PROFILES.forEach(p => {
+      allTimeline(p).forEach(v => {
+        if(!v.fotos || !v.fotos.length) return;
+        if(v.tanggal < range.from || v.tanggal > range.to) return;
+        photos.push({ p, v, fotos: v.fotos });
+      });
+    });
+  } else if(wantsPhoto){
+    // Ambil foto terbaru dari semua
+    PROFILES.forEach(p => {
+      allTimeline(p).forEach(v => {
+        if(v.fotos && v.fotos.length) photos.push({ p, v, fotos: v.fotos });
+      });
+    });
+  } else {
+    return ''; // Tidak minta foto & tidak ada nama → skip
+  }
+
+  if(!photos.length) return '';
+
+  photos.sort((a,b) => (b.v.tanggal||'').localeCompare(a.v.tanggal||''));
+
+  let html = '<hr><div class="dim" style="margin-bottom:8px"><b>📷 Foto Kunjungan (' + photos.length + ' kunjungan memiliki foto)</b></div>';
+  photos.slice(0, 12).forEach(x => {
+    html += '<div class="photo-block">' +
+      '<div class="pb-head">' +
+        '<b>' + esc(x.p.nama) + '</b> · ' + esc(fmtTgl(x.v.tanggal)) +
+        (x.v.ao ? ' · AO: ' + esc(x.v.ao) : '') +
+        (x.v.hasil ? '<br>' + esc(x.v.hasil.slice(0, 120)) + (x.v.hasil.length > 120 ? '…' : '') : '') +
+      '</div>' +
+      renderFotoStrip(x.fotos, true) +
+    '</div>';
+  });
+  if(photos.length > 12) html += '<div class="dim">...dan ' + (photos.length - 12) + ' kunjungan lain dengan foto.</div>';
+  return html;
+}
+
+/* ============ HANDLER ============ */
 function answerBantuan(){
   return '<h3>Halo! Aku Tanya KOPENA 👋</h3>' +
     '<p>Aku bisa nyariin data dari 3 aplikasi kamu sekaligus:</p>' +
@@ -1502,14 +1703,14 @@ function answerBantuan(){
       '<li><b>Cari Ahmad Rizki</b> — profil lengkapnya</li>' +
       '<li><b>Riwayat kunjungan Ahmad Rizki</b></li>' +
       '<li><b>Atas nama Ahmad Rizki apakah sudah angsuran?</b></li>' +
+      '<li><b>Foto kunjungan Ahmad Rizki</b> — aku tampilkan langsung</li>' +
       '<li><b>Siapa aja yang sudah angsuran hari ini?</b></li>' +
       '<li><b>Siapa yang belum dikunjungi?</b></li>' +
       '<li><b>Ada yang janji bayar?</b></li>' +
+      '<li><b>Analisa kondisi data kita</b></li>' +
       '<li><b>Rekap AO Dimas</b></li>' +
-      '<li><b>Tunggakan terbesar</b></li>' +
-      '<li><b>Rangkum data kita</b></li>' +
     '</ul>' +
-    '<div class="dim">📎 <b>Tips:</b> kamu juga bisa upload file Excel/CSV/XML/PDF dari chat. Data dari file langsung menggantikan data lama.</div>';
+    '<div class="dim">📎 <b>Tips:</b> upload file Excel/CSV/XML/PDF langsung di tombol kiri untuk ganti data.</div>';
 }
 
 function answerTotalNasabah(){
@@ -1519,35 +1720,29 @@ function answerTotalNasabah(){
   html += '<dl class="kv">';
   html += '<dt>Total resmi</dt><dd class="nums"><b>' + totalMaster.toLocaleString('id-ID') + '</b> nasabah</dd>';
   html += '</dl>';
-  html += '<div class="dim">Angka diambil dari <b>' + esc(sumber) + '</b> — itu sumber paling akurat saat ini.</div>';
-  html += '<div class="dim" style="margin-top:8px">Profil gabungan (termasuk nasabah lama di Firebase yang belum ada di master): ' + PROFILES.length + '</div>';
+  html += '<div class="dim">Angka diambil dari <b>' + esc(sumber) + '</b>.</div>';
+  html += '<div class="dim" style="margin-top:8px">Profil gabungan (termasuk nasabah lama di Firebase): ' + PROFILES.length + '</div>';
   return html;
 }
 
 function answerCari(text){
   const cand = extractNameCandidate(text);
-  if(!cand){
-    return '<p>Kamu mau nyari apa nih? Tulis aja nama nasabahnya, nomor rekening, atau alamatnya.</p>' + answerBantuan();
-  }
+  if(!cand) return '<p>Kamu mau nyari apa nih? Tulis nama nasabah, nomor rekening, atau alamatnya.</p>' + answerBantuan();
   const found = searchProfiles(cand, 8);
   if(!found.length){
     const alt = searchProfiles(text, 6);
     if(!alt.length){
       return '<p>Waduh, aku nggak nemu nasabah dengan nama <b>' + esc(cand) + '</b> 🤔</p>' +
-        '<div class="dim">Coba tulis sebagian namanya aja (misal: <code>Rizki</code>), atau nomor rekeningnya.</div>';
+        '<div class="dim">Coba tulis sebagian namanya (misal: <code>Rizki</code>), atau nomor rekeningnya.</div>';
     }
     return renderListResult(alt, 'Nih hasil pencarian "' + cand + '"');
   }
-  if(found.length === 1){
-    return fullProfileHtml(found[0]);
-  }
+  if(found.length === 1) return fullProfileHtml(found[0]);
   return renderListResult(found, 'Ketemu ' + found.length + ' nasabah untuk "' + cand + '"');
 }
 function renderListResult(list, title){
   let html = '<h3>' + esc(title) + '</h3>';
-  if(list.length > 12){
-    html += '<div class="dim">Aku tampilin 12 dulu ya, totalnya ada ' + list.length + '.</div>';
-  }
+  if(list.length > 12) html += '<div class="dim">Aku tampilin 12 dulu, total ' + list.length + '.</div>';
   list.slice(0, 12).forEach(p => { html += profileSummaryCard(p); });
   return html;
 }
@@ -1567,7 +1762,7 @@ function answerRiwayatOrang(p){
   let html = '<h3>Riwayat kunjungan — ' + esc(p.nama) + '</h3>';
   html += '<div class="dim nums">' + esc(p.reks.join(' · ')) + ' · AO: ' + esc(p.ao || '-') + '</div>';
   if(!tl.length){
-    html += '<hr><div class="err-box">Sepertinya belum ada catatan kunjungan nih.</div>';
+    html += '<hr><div class="err-box">Belum ada catatan kunjungan nih.</div>';
   } else {
     html += '<hr><div class="dim" style="margin-bottom:6px">Total ' + tl.length + '× dikunjungi:</div><div class="tl">';
     tl.forEach(v => {
@@ -1588,18 +1783,47 @@ function answerRiwayatOrang(p){
   return html;
 }
 
+function answerFoto(text){
+  const cand = extractNameCandidate(text);
+  if(cand && cand.length >= 3){
+    const found = searchProfiles(cand, 1);
+    if(found.length){
+      const p = found[0];
+      const tl = allTimeline(p).filter(v => v.fotos && v.fotos.length);
+      if(!tl.length){
+        return '<h3>📷 Foto — ' + esc(p.nama) + '</h3>' +
+          '<hr><div class="empty-note">Belum ada foto kunjungan untuk nasabah ini. Kunjungan mungkin dicatat tanpa foto.</div>';
+      }
+      let html = '<h3>📷 Foto Kunjungan — ' + esc(p.nama) + '</h3>';
+      html += '<div class="dim">Ada ' + tl.length + ' kunjungan dengan foto.</div><hr>';
+      tl.forEach(v => {
+        html += '<div class="photo-block">' +
+          '<div class="pb-head"><b>' + esc(fmtTgl(v.tanggal)) + '</b>' +
+            (v.ao ? ' · AO: ' + esc(v.ao) : '') +
+            (v.status ? ' · ' + esc(v.status) : '') +
+            (v.hasil ? '<br>' + esc(v.hasil) : '') +
+          '</div>' +
+          renderFotoStrip(v.fotos, true) +
+        '</div>';
+      });
+      return html;
+    }
+  }
+  const html = '<h3>📷 Foto Kunjungan Terbaru</h3>';
+  return html + buildPhotoSection(text || 'foto');
+}
+
 function answerBelum(text){
   const ao = extractAO(text);
   const desa = extractDesa(text);
   let list = PROFILES.filter(p => {
     if(p.visits.length || p.reports.length) return false;
-    if(!p.master) return false; // hanya nasabah yang ada di master
+    if(!p.master) return false;
     if(ao && p.ao !== ao) return false;
     if(desa && !norm(p.alamat).includes(norm(desa))) return false;
     return true;
   });
   list.sort((a,b) => num(b.master && b.master.saldo) - num(a.master && a.master.saldo));
-
   let html = '<h3>Yang belum dikunjungi' + (ao ? ' (AO: ' + esc(ao) + ')' : '') + (desa ? ' — di ' + esc(desa) : '') + '</h3>';
   html += '<div class="dim">Ada <b>' + list.length + '</b> nasabah yang belum pernah dicatat kunjungannya.</div><hr>';
   if(!list.length){
@@ -1607,9 +1831,7 @@ function answerBelum(text){
     return html;
   }
   list.slice(0, 15).forEach(p => { html += profileSummaryCard(p); });
-  if(list.length > 15){
-    html += '<div class="dim" style="margin-top:8px">Masih ada ' + (list.length - 15) + ' lagi.</div>';
-  }
+  if(list.length > 15) html += '<div class="dim" style="margin-top:8px">Masih ada ' + (list.length - 15) + ' lagi.</div>';
   return html;
 }
 function answerBelumOrang(p){
@@ -1646,7 +1868,6 @@ function answerJanji(text){
   if(ao) list = list.filter(r => r.ao === ao);
   if(range) list = list.filter(r => r.target && r.target >= range.from && r.target <= range.to);
   list.sort((a,b) => (a.target || '9999').localeCompare(b.target || '9999') || (b.tanggal||'').localeCompare(a.tanggal||''));
-
   const today = todayISO();
   let html = '<h3>Yang janji bayar' + (ao ? ' — AO ' + esc(ao) : '') + '</h3>';
   html += '<div class="dim">Ada <b>' + list.length + '</b> catatan' + (range ? ' untuk ' + esc(range.label) : '') + '.</div><hr>';
@@ -1704,11 +1925,9 @@ function answerAngsuran(text){
   const ao = extractAO(text);
   const today = todayISO();
   const isToday = range && range.from === today && range.to === today;
-
   let dariLaporan = DB.marketing.filter(r => r.status === 'Sudah Bayar');
   if(range) dariLaporan = dariLaporan.filter(r => r.tanggal >= range.from && r.tanggal <= range.to);
   if(ao) dariLaporan = dariLaporan.filter(r => r.ao === ao);
-
   let dariMaster = PROFILES.filter(p => {
     if(!p.master) return false;
     const pokok = num(p.master.pembayaran_pokok);
@@ -1716,13 +1935,10 @@ function answerAngsuran(text){
     return pokok > 0 || margin > 0 || p.master.sudah_angsur === true;
   });
   if(ao) dariMaster = dariMaster.filter(p => p.ao === ao);
-
   const periodLabel = range ? range.label : 'bulan ini';
   let html = '<h3>💵 Yang sudah angsuran' + (ao ? ' — AO ' + esc(ao) : '') + '</h3>';
   html += '<div class="dim">Periode: <b>' + esc(periodLabel) + '</b>'
-    + (range ? ' (' + fmtTgl(range.from) + ' – ' + fmtTgl(range.to) + ')' : '')
-    + '</div><hr>';
-
+    + (range ? ' (' + fmtTgl(range.from) + ' – ' + fmtTgl(range.to) + ')' : '') + '</div><hr>';
   if(dariLaporan.length){
     html += '<div style="margin-bottom:6px"><b>📋 Dari Laporan Marketing (' + dariLaporan.length + ')</b></div>';
     let total = 0;
@@ -1731,7 +1947,6 @@ function answerAngsuran(text){
       if(rec && rec.master) total += num(rec.master.angsuran_bulanan);
     });
     if(total > 0) html += '<div class="ok-box">💰 Total angsuran tercatat: <b>' + fmtRpFull(total) + '</b></div>';
-
     dariLaporan.slice(0, 12).forEach(r => {
       const rec = r.norek ? BY_REK.get(cleanRek(r.norek)) : null;
       const m = rec ? rec.master || {} : {};
@@ -1740,29 +1955,19 @@ function answerAngsuran(text){
         '<div class="rc-top"><div class="rc-name">' + esc(r.debitur) + '</div>' +
         '<div class="rc-rek nums">' + (nominal ? fmtRp(nominal) : '') + '</div></div>' +
         '<div class="rc-line">' + esc((r.hasil || '-').slice(0, 160)) + '</div>' +
-        '<div class="rc-badges">' +
-          badge('✅ Sudah Bayar', 'green') +
-          badge('Dicatat ' + fmtTgl(r.tanggal), 'grey') +
-          badge(r.ao || '-', '') +
-        '</div>' +
+        '<div class="rc-badges">' + badge('✅ Sudah Bayar', 'green') + badge('Dicatat ' + fmtTgl(r.tanggal), 'grey') + badge(r.ao || '-', '') + '</div>' +
       '</div>';
     });
     html += '<hr>';
   }
-
   if(dariMaster.length){
     html += '<div style="margin-bottom:6px"><b>📊 Dari Master Data (' + dariMaster.length + ')</b></div>';
-    html += '<div class="dim" style="margin-bottom:8px">Catatan: master data cuma nandain pembayaran di file terbaru.</div>';
-
     dariMaster.sort((a,b) => num(b.master.pembayaran_pokok) - num(a.master.pembayaran_pokok));
-
     const totalPokok = dariMaster.reduce((s,p) => s + num(p.master.pembayaran_pokok), 0);
     const totalMargin = dariMaster.reduce((s,p) => s + num(p.master.pembayaran_margin), 0);
     if(totalPokok || totalMargin){
-      html += '<div class="ok-box">💰 Total — Pokok: <b>' + fmtRpFull(totalPokok) +
-        '</b> · Margin: <b>' + fmtRpFull(totalMargin) + '</b></div>';
+      html += '<div class="ok-box">💰 Total — Pokok: <b>' + fmtRpFull(totalPokok) + '</b> · Margin: <b>' + fmtRpFull(totalMargin) + '</b></div>';
     }
-
     dariMaster.slice(0, 12).forEach(p => {
       const m = p.master;
       html += '<div class="res-card" data-nama="' + esc(p.nama) + '">' +
@@ -1771,47 +1976,36 @@ function answerAngsuran(text){
         '<div class="rc-badges">' +
           (num(m.pembayaran_pokok) ? badge('Pokok ' + fmtRp(m.pembayaran_pokok), 'green') : '') +
           (num(m.pembayaran_margin) ? badge('Margin ' + fmtRp(m.pembayaran_margin), 'amber') : '') +
-          badge('Sisa OS ' + fmtRp(m.saldo), 'grey') +
-          badge(p.ao || '-', '') +
+          badge('Sisa OS ' + fmtRp(m.saldo), 'grey') + badge(p.ao || '-', '') +
         '</div>' +
       '</div>';
     });
   }
-
   if(!dariLaporan.length && !dariMaster.length){
-    html += '<div class="empty-note">Belum ada catatan angsuran'
-      + (isToday ? ' untuk hari ini' : '') + (ao ? ' dari AO ' + esc(ao) : '') + '.</div>';
+    html += '<div class="empty-note">Belum ada catatan angsuran' + (isToday ? ' untuk hari ini' : '') + (ao ? ' dari AO ' + esc(ao) : '') + '.</div>';
   }
   return html;
 }
-
 function answerAngsuranOrang(p, text){
   const range = extractDateRange(text);
   const m = p.master || {};
   const reports = p.reports.filter(r => r.status === 'Sudah Bayar');
-  const reportsFiltered = range
-    ? reports.filter(r => r.tanggal >= range.from && r.tanggal <= range.to)
-    : reports;
-
+  const reportsFiltered = range ? reports.filter(r => r.tanggal >= range.from && r.tanggal <= range.to) : reports;
   const pokok = num(m.pembayaran_pokok);
   const margin = num(m.pembayaran_margin);
   const sudahBayarBulanIni = pokok > 0 || margin > 0 || m.sudah_angsur === true;
   const angsuran = num(m.angsuran_bulanan);
   const periodLabel = range ? range.label : 'bulan ini';
-
   let html = '<h3>💵 Angsuran — ' + esc(p.nama) + '</h3>';
   html += '<div class="dim nums">' + esc(p.reks.join(' · ') || '—') + ' · AO: ' + esc(p.ao || '-') + '</div><hr>';
-
   if(reportsFiltered.length > 0){
-    html += '<div class="ok-box">✅ <b>SUDAH angsuran</b> ' + esc(periodLabel) +
-      ' — tercatat ' + reportsFiltered.length + '× di Laporan Marketing.</div>';
+    html += '<div class="ok-box">✅ <b>SUDAH angsuran</b> ' + esc(periodLabel) + ' — ' + reportsFiltered.length + '× di Laporan Marketing.</div>';
   } else if(sudahBayarBulanIni){
     html += '<div class="ok-box">✅ <b>SUDAH ada setoran</b> di master data bulan ini.</div>';
   } else {
     html += '<div class="err-box">⚠️ <b>BELUM ada catatan angsuran</b> ' + esc(periodLabel) +
       '.' + (angsuran ? ' Angsuran wajibnya ' + fmtRpFull(angsuran) + '/bulan.' : '') + '</div>';
   }
-
   html += '<dl class="kv">';
   if(angsuran)          html += '<dt>Angsuran/bln</dt><dd class="nums">' + fmtRpFull(angsuran) + '</dd>';
   if(num(m.saldo))      html += '<dt>Sisa OS</dt><dd class="nums">' + fmtRpFull(m.saldo) + '</dd>';
@@ -1819,7 +2013,6 @@ function answerAngsuranOrang(p, text){
   if(margin)            html += '<dt>Setoran margin</dt><dd class="nums">' + fmtRpFull(margin) + '</dd>';
   if(m.tgl_jatuh_tempo) html += '<dt>Jatuh tempo</dt><dd>' + esc(m.tgl_jatuh_tempo) + '</dd>';
   html += '</dl>';
-
   if(reports.length){
     html += '<hr><div class="dim" style="margin-bottom:6px"><b>Riwayat "Sudah Bayar":</b></div><div class="tl">';
     reports.slice(0, 5).forEach(r => {
@@ -1861,10 +2054,7 @@ function answerRekapAO(text){
   const rows = Object.entries(map).sort((a,b) => b[1].total - a[1].total);
   let html = '<h3>Rekap kunjungan per AO 📋</h3>';
   html += '<div class="dim">Periode ' + esc(range.label) + ' (' + fmtTgl(range.from) + ' – ' + fmtTgl(range.to) + ')</div><hr>';
-  if(!rows.length){
-    html += '<div class="empty-note">Belum ada kunjungan di periode ini.</div>';
-    return html;
-  }
+  if(!rows.length){ html += '<div class="empty-note">Belum ada kunjungan di periode ini.</div>'; return html; }
   html += '<dl class="kv">';
   rows.forEach(([ao, v]) => {
     let extra = [];
@@ -1895,16 +2085,11 @@ function answerPeriode(range){
   list.sort((a,b) => (b.tanggal||'').localeCompare(a.tanggal||''));
   let html = '<h3>Kunjungan ' + esc(range.label) + '</h3>';
   html += '<div class="dim">' + fmtTgl(range.from) + ' – ' + fmtTgl(range.to) + ' · ' + list.length + ' catatan</div><hr>';
-  if(!list.length){
-    html += '<div class="empty-note">Belum ada catatan kunjungan di periode itu.</div>';
-    return html;
-  }
+  if(!list.length){ html += '<div class="empty-note">Belum ada catatan kunjungan di periode itu.</div>'; return html; }
   const byStatus = {};
   list.forEach(x => { byStatus[x.status || '-'] = (byStatus[x.status || '-'] || 0) + 1; });
   html += '<div style="margin-bottom:10px">';
-  Object.entries(byStatus).sort((a,b) => b[1]-a[1]).forEach(([s,n]) => {
-    html += badge(s + ': ' + n, statusBadgeCls(s));
-  });
+  Object.entries(byStatus).sort((a,b) => b[1]-a[1]).forEach(([s,n]) => { html += badge(s + ': ' + n, statusBadgeCls(s)); });
   html += '</div>';
   list.slice(0, 20).forEach(x => {
     html += '<div class="res-card" data-nama="' + esc(x.nama) + '">' +
@@ -1921,16 +2106,11 @@ function answerTunggakan(text){
   let list = PROFILES.filter(p => p.master && num(p.master.saldo) > 0);
   if(ao) list = list.filter(p => p.ao === ao);
   list.sort((a,b) => num(b.master.saldo) - num(a.master.saldo));
-
   let html = '<h3>Outstanding terbesar' + (ao ? ' — AO ' + esc(ao) : '') + '</h3>';
   html += '<div class="dim">Ada <b>' + list.length + '</b> nasabah yang masih punya saldo.</div><hr>';
-  if(!list.length){
-    html += '<div class="empty-note">Data outstanding nggak kelihatan.</div>';
-    return html;
-  }
+  if(!list.length){ html += '<div class="empty-note">Data outstanding nggak kelihatan.</div>'; return html; }
   const total = list.reduce((s,p) => s + num(p.master.saldo), 0);
   html += '<div class="ok-box">💰 Total outstanding: <b>' + fmtRpFull(total) + '</b></div>';
-
   list.slice(0, 12).forEach(p => {
     const m = p.master;
     const coll = (m.coll !== undefined && m.coll !== null && m.coll !== '') ? num(m.coll) : null;
@@ -1950,20 +2130,12 @@ function answerAlamat(text){
   const desa = extractDesa(text);
   const ao = extractAO(text);
   let list;
-  if(desa){
-    list = PROFILES.filter(p => norm(p.alamat).includes(norm(desa)));
-  } else {
-    const cand = extractNameCandidate(text);
-    list = cand ? searchProfiles(cand, 20) : [];
-  }
+  if(desa) list = PROFILES.filter(p => norm(p.alamat).includes(norm(desa)));
+  else { const cand = extractNameCandidate(text); list = cand ? searchProfiles(cand, 20) : []; }
   if(ao) list = list.filter(p => p.ao === ao);
-
   let html = '<h3>Nasabah' + (desa ? ' di ' + esc(desa) : '') + (ao ? ' — AO ' + esc(ao) : '') + '</h3>';
   html += '<div class="dim">Ketemu <b>' + list.length + '</b> nasabah.</div><hr>';
-  if(!list.length){
-    html += '<div class="empty-note">Nggak ada yang cocok nih.</div>';
-    return html;
-  }
+  if(!list.length){ html += '<div class="empty-note">Nggak ada yang cocok nih.</div>'; return html; }
   list.slice(0, 15).forEach(p => { html += profileSummaryCard(p); });
   return html;
 }
@@ -1981,7 +2153,6 @@ function answerStatistik(){
   const today = todayISO();
   const kunjunganHariIni = DB.marketing.filter(r => r.tanggal === today).length +
     PROFILES.reduce((s,p) => s + p.visits.filter(v => v.tanggal === today).length, 0);
-
   let html = '<h3>Rangkuman data kita 📊</h3><hr>';
   html += '<dl class="kv">';
   html += '<dt>Total nasabah (resmi)</dt><dd class="nums">' + totalNasabah.toLocaleString('id-ID') + '</dd>';
@@ -1997,7 +2168,6 @@ function answerStatistik(){
   html += '<dt>Berhasil ditagih</dt><dd class="nums">' + bayar + '</dd>';
   html += '<dt>Jumlah AO</dt><dd class="nums">' + AO_LIST.length + '</dd>';
   html += '</dl>';
-
   html += '<hr><div class="dim"><b>Sumber data:</b><br>' +
     (DB.ready.bk ? '✅' : '❌') + ' Buku Kunjungan · ' +
     (DB.ready.mk ? '✅' : '❌') + ' Laporan Marketing · ' +
@@ -2006,30 +2176,86 @@ function answerStatistik(){
   return html;
 }
 
-/* ------------------------- 12. DISPATCHER ------------------------- */
+function answerAnalisa(){
+  const a = computeAnalytics();
+  let html = '<h3>📊 Analisis Data KOPENA</h3><hr>';
+  html += '<div class="metric-grid">';
+  html += '<div class="metric"><span class="lbl">Total Nasabah</span><span class="val">' + PROFILES.length + '</span></div>';
+  html += '<div class="metric"><span class="lbl">Total Outstanding</span><span class="val">' + fmtRp(a.totalOS) + '</span></div>';
+  html += '<div class="metric ' + (a.collDist[3] + a.collDist[4] > 20 ? 'danger' : 'warn') + '"><span class="lbl">Coll 3 & 4</span><span class="val">' + (a.collDist[3] + a.collDist[4]) + '</span><span class="sub">nasabah bermasalah</span></div>';
+  html += '<div class="metric ' + (a.sudahKunjung / Math.max(1, PROFILES.length) > 0.7 ? 'ok' : 'warn') + '"><span class="lbl">Coverage Kunjungan</span><span class="val">' + Math.round(a.sudahKunjung / Math.max(1, PROFILES.length) * 100) + '%</span></div>';
+  html += '</div>';
+  html += '<div class="insight-card"><div class="title">🎯 Prioritas Utama</div>';
+  html += '<p>Ada <b>' + a.risky.length + '</b> nasabah dengan skor risiko tinggi (≥40). ';
+  if(a.risky.length){
+    const top3 = a.risky.slice(0, 3);
+    html += 'Yang paling perlu diperhatikan: <b>' + top3.map(x => esc(x.p.nama)).join(', ') + '</b>.</p>';
+  } else {
+    html += 'Kondisi relatif aman.</p>';
+  }
+  html += '</div>';
+  if(a.janjiLewat.length){
+    html += '<div class="insight-card danger"><div class="title">⏰ Janji Bayar Lewat Target</div>';
+    html += '<p>Ada <b>' + a.janjiLewat.length + '</b> janji bayar yang sudah lewat tanggal. ';
+    html += 'Yang paling lama: <b>' + a.janjiLewat.slice(0, 3).map(r => esc(r.debitur) + ' (' + fmtTgl(r.target) + ')').join(', ') + '</b>.</p>';
+    html += '</div>';
+  }
+  if(a.belum.length){
+    html += '<div class="insight-card warn"><div class="title">📍 Belum Pernah Dikunjungi</div>';
+    html += '<p><b>' + a.belum.length + '</b> nasabah belum pernah dicatat kunjungan.</p>';
+    html += '</div>';
+  }
+  if(a.risky.length){
+    html += '<hr><div class="dim" style="margin-bottom:6px"><b>⚠️ Top Nasabah Risiko Tinggi</b></div>';
+    a.risky.slice(0, 8).forEach(x => {
+      const p = x.p;
+      const m = p.master || {};
+      html += '<div class="res-card" data-nama="' + esc(p.nama) + '">' +
+        '<div class="rc-top"><div class="rc-name">' + esc(p.nama) + '</div>' +
+        '<div class="rc-rek nums">Skor ' + x.score + '</div></div>' +
+        '<div class="rc-badges">' +
+          badge('OS ' + fmtRp(num(m.saldo)), 'amber') +
+          badge('Coll ' + (m.coll ?? '-'), num(m.coll) >= 3 ? 'red' : 'grey') +
+          badge(p.ao || '-', '') +
+        '</div>' +
+      '</div>';
+    });
+  }
+  const aoEntries = Object.entries(a.aoStat).sort((x,y) => y[1].total - x[1].total);
+  if(aoEntries.length){
+    html += '<hr><div class="dim" style="margin-bottom:6px"><b>👥 Kinerja AO</b></div>';
+    html += '<dl class="kv">';
+    aoEntries.slice(0, 8).forEach(([ao, v]) => {
+      html += '<dt>' + esc(ao) + '</dt><dd class="nums">' + v.total + ' aksi';
+      if(v.bayar) html += ' · <span style="color:#1f7a45">' + v.bayar + ' bayar</span>';
+      if(v.janji) html += ' · <span style="color:#b5842a">' + v.janji + ' janji</span>';
+      html += '</dd>';
+    });
+    html += '</dl>';
+  }
+  html += '<div class="dim" style="margin-top:10px">💡 Tanya lanjutan: <code>analisa risiko Ahmad</code> atau <code>siapa yang perlu dikunjungi minggu ini?</code></div>';
+  return html;
+}
+
+/* ------------------------- 11. DISPATCHER ------------------------- */
 function buildLocalAnswer(text){
   const intent = detectIntent(text);
   const nameCand = extractNameCandidate(text);
-  const matchedPerson = (nameCand && nameCand.length >= 3)
-    ? (searchProfiles(nameCand, 1)[0] || null)
-    : null;
+  const matchedPerson = (nameCand && nameCand.length >= 3) ? (searchProfiles(nameCand, 1)[0] || null) : null;
   const strongMatch = matchedPerson && scoreMatch(nameCand, matchedPerson.nama) >= 55;
-
-  const isListQuery = (intent === 'rekap_ao' || intent === 'bantuan' || intent === 'total_nasabah' || isAOQuery(text));
-
-  if(strongMatch && !isListQuery){
-    return focusAnswer(intent, matchedPerson, text);
-  }
-
+  const isListQuery = (intent === 'rekap_ao' || intent === 'bantuan' || intent === 'total_nasabah' || intent === 'analisa' || isAOQuery(text));
+  if(strongMatch && !isListQuery) return focusAnswer(intent, matchedPerson, text);
   switch(intent){
     case 'bantuan': return answerBantuan();
     case 'total_nasabah': return answerTotalNasabah();
+    case 'analisa': return answerAnalisa();
     case 'janji': return answerJanji(text);
     case 'angsuran': return answerAngsuran(text);
     case 'belum': return answerBelum(text);
     case 'tunggakan': return answerTunggakan(text);
     case 'rekap_ao': return answerRekapAO(text);
     case 'statistik': return answerStatistik();
+    case 'foto': return answerFoto(text);
     case 'riwayat': return answerRiwayat(text);
     case 'alamat': return answerAlamat(text);
     default:
@@ -2044,26 +2270,33 @@ function focusAnswer(intent, p, text){
     case 'janji': return answerJanjiOrang(p);
     case 'riwayat': return answerRiwayatOrang(p);
     case 'belum': return answerBelumOrang(p);
+    case 'foto': {
+      const tl = allTimeline(p).filter(v => v.fotos && v.fotos.length);
+      if(!tl.length) return '<h3>📷 Foto — ' + esc(p.nama) + '</h3><hr><div class="empty-note">Belum ada foto kunjungan untuk nasabah ini.</div>';
+      let html = '<h3>📷 Foto — ' + esc(p.nama) + '</h3><div class="dim">' + tl.length + ' kunjungan punya foto.</div><hr>';
+      tl.forEach(v => {
+        html += '<div class="photo-block"><div class="pb-head"><b>' + esc(fmtTgl(v.tanggal)) + '</b>' +
+          (v.ao ? ' · ' + esc(v.ao) : '') + (v.hasil ? '<br>' + esc(v.hasil) : '') + '</div>' +
+          renderFotoStrip(v.fotos, true) + '</div>';
+      });
+      return html;
+    }
     default: return fullProfileHtml(p);
   }
 }
 
-/* ------------------------- 13. KONTEKS LLM ------------------------- */
+/* ------------------------- 12. KONTEKS LLM ------------------------- */
 function buildContext(text){
   const intent = detectIntent(text);
   const parts = [];
   parts.push('PERIODE HARI INI: ' + todayISO());
   parts.push('SUMBER MASTER: ' + masterSourceLabel() + ' (' + getEffectiveMaster().length + ' baris)');
-
   const cand = extractNameCandidate(text);
   const found = cand ? searchProfiles(cand, 10) : [];
   const focusPerson = (found.length && cand && scoreMatch(cand, found[0].nama) >= 55) ? found[0] : null;
-
   if(focusPerson){
-    parts.push('PERMINTAAN FOKUS: Pengguna menanyakan SATU nasabah spesifik yaitu "' + focusPerson.nama + '". ' +
-      'Jawab HANYA tentang orang ini. JANGAN menyodorkan daftar nasabah lain.');
+    parts.push('PERMINTAAN FOKUS: Pengguna menanyakan SATU nasabah spesifik yaitu "' + focusPerson.nama + '". Jawab HANYA tentang orang ini.');
   }
-
   if(found.length){
     parts.push('\n== NASABAH TERKAIT ==');
     found.forEach(p => {
@@ -2088,7 +2321,6 @@ function buildContext(text){
       });
     });
   }
-
   const range = extractDateRange(text);
   if(range){
     parts.push('\n== KUNJUNGAN ' + range.label.toUpperCase() + ' (' + range.from + ' s/d ' + range.to + ') ==');
@@ -2096,7 +2328,6 @@ function buildContext(text){
     rows.forEach(r => parts.push('- ' + r.tanggal + ' | ' + r.debitur + ' | ' + r.status + ' | AO: ' + r.ao + ' | ' + (r.hasil || '').slice(0,120)));
     if(!rows.length) parts.push('(tidak ada)');
   }
-
   if(intent === 'angsuran' && !focusPerson){
     parts.push('\n== ANGSURAN / SUDAH BAYAR ==');
     const rangeA = extractDateRange(text);
@@ -2110,35 +2341,38 @@ function buildContext(text){
       .slice(0, 50)
       .forEach(p => parts.push('- ' + p.nama + ' | pokok: ' + num(p.master.pembayaran_pokok) + ' | margin: ' + num(p.master.pembayaran_margin) + ' | AO: ' + (p.ao || '-')));
   }
-
   if(intent === 'tunggakan'){
     parts.push('\n== OUTSTANDING TERBESAR ==');
     PROFILES.filter(p => p.master && num(p.master.saldo) > 0)
-      .sort((a,b) => num(b.master.saldo) - num(a.master.saldo))
-      .slice(0, 50)
+      .sort((a,b) => num(b.master.saldo) - num(a.master.saldo)).slice(0, 50)
       .forEach(p => parts.push('- ' + p.nama + ' | ' + fmtRpFull(p.master.saldo) + ' | AO: ' + (p.ao || '-') + ' | coll: ' + (p.master.coll ?? '-')));
   }
-
   if(intent === 'belum'){
     const list = PROFILES.filter(p => p.master && !p.visits.length && !p.reports.length);
     parts.push('\n== BELUM DIKUNJUNGI (' + list.length + ' nasabah) ==');
     list.slice(0, 60).forEach(p => parts.push('- ' + p.nama + ' | AO: ' + (p.ao || '-') + ' | ' + (p.alamat || '-')));
   }
-
   if(intent === 'janji'){
     parts.push('\n== JANJI BAYAR ==');
     DB.marketing.filter(r => r.status === 'Janji Bayar').slice(0, 30)
       .forEach(r => parts.push('- ' + r.debitur + ' | target: ' + (r.target || '-') + ' | dicatat: ' + r.tanggal + ' | AO: ' + r.ao));
   }
-
+  if(intent === 'foto'){
+    parts.push('\n== FOTO ==');
+    const cand2 = extractNameCandidate(text);
+    const list = cand2 ? searchProfiles(cand2, 3) : [];
+    list.forEach(p => {
+      const f = allTimeline(p).filter(v => v.fotos && v.fotos.length);
+      parts.push('- ' + p.nama + ': ' + f.length + ' kunjungan dengan foto');
+    });
+  }
   parts.push('\n== RINGKASAN GLOBAL ==');
-  parts.push('⚠️ TOTAL NASABAH RESMI (WAJIB dipakai kalau ditanya total nasabah): ' + getEffectiveMaster().length + ' — dari ' + masterSourceLabel());
-  parts.push('Profil gabungan (termasuk nasabah lama di Firebase): ' + PROFILES.length);
+  parts.push('⚠️ TOTAL NASABAH RESMI: ' + getEffectiveMaster().length + ' — dari ' + masterSourceLabel());
+  parts.push('Profil gabungan: ' + PROFILES.length);
   parts.push('Total kunjungan Buku Kunjungan: ' + PROFILES.reduce((s,p) => s + p.visits.length, 0));
   parts.push('Total Laporan Marketing: ' + DB.marketing.length);
   parts.push('Total outstanding: ' + fmtRpFull(PROFILES.reduce((s,p) => s + (p.master ? num(p.master.saldo) : 0), 0)));
   parts.push('Jumlah AO: ' + AO_LIST.length + ' (' + AO_LIST.join(', ') + ')');
-
   let ctx = parts.join('\n');
   if(ctx.length > 60000) ctx = ctx.slice(0, 60000) + '\n…(dipotong)';
   return ctx;
@@ -2146,21 +2380,13 @@ function buildContext(text){
 
 function getSettings(){
   try {
-    return Object.assign({
-      llmOn: false,
-      baseUrl: 'https://api.openai.com/v1',
-      apiKey: '',
-      model: 'gpt-4o-mini'
-    }, JSON.parse(localStorage.getItem('tanyakopena_settings') || '{}'));
-  } catch(e){
-    return { llmOn: false, baseUrl: 'https://api.openai.com/v1', apiKey: '', model: 'gpt-4o-mini' };
-  }
+    return Object.assign({ llmOn: false, baseUrl: 'https://api.openai.com/v1', apiKey: '', model: 'gpt-4o-mini' },
+      JSON.parse(localStorage.getItem('tanyakopena_settings') || '{}'));
+  } catch(e){ return { llmOn: false, baseUrl: 'https://api.openai.com/v1', apiKey: '', model: 'gpt-4o-mini' }; }
 }
-function saveSettings(s){
-  localStorage.setItem('tanyakopena_settings', JSON.stringify(s));
-}
+function saveSettings(s){ localStorage.setItem('tanyakopena_settings', JSON.stringify(s)); }
 
-/* ------------------------- 14. INGATAN CHAT ------------------------- */
+/* ------------------------- 13. INGATAN CHAT ------------------------- */
 const HIST_KEY = 'tanyakopena_chat_v1';
 const HIST_MAX_STORED = 60;
 const HIST_MAX_SENT = 14;
@@ -2178,10 +2404,7 @@ function saveHist(){
   CHAT_HIST = CHAT_HIST.slice(-HIST_MAX_STORED);
   const payload = () => JSON.stringify({ msgs: CHAT_HIST, focus: lastFocusNama });
   try { localStorage.setItem(HIST_KEY, payload()); }
-  catch(e){
-    CHAT_HIST.forEach(m => { delete m.html; });
-    try { localStorage.setItem(HIST_KEY, payload()); } catch(e2){}
-  }
+  catch(e){ CHAT_HIST.forEach(m => { delete m.html; }); try { localStorage.setItem(HIST_KEY, payload()); } catch(e2){} }
 }
 function htmlToText(html){
   const d = document.createElement('div');
@@ -2189,7 +2412,7 @@ function htmlToText(html){
   return (d.textContent || '').replace(/\s+/g, ' ').trim();
 }
 const FOLLOWUP_RE = /\b(dia|dirinya|beliau|ybs|yang tadi|yang sama|orang(?:nya)? (?:itu|tadi|ini)|nasabah(?:nya)? (?:itu|tadi|ini))\b/gi;
-const NYA_RE = /\b(alamat|nomor|nomer|norek|rekening|angsuran|kunjungan|riwayat|jaminan|plafon|saldo|outstanding|janji|hp|wa|ao|status|coll)nya\b/i;
+const NYA_RE = /\b(alamat|nomor|nomer|norek|rekening|angsuran|kunjungan|riwayat|jaminan|plafon|saldo|outstanding|janji|hp|wa|ao|status|coll|foto)nya\b/i;
 function resolveFollowUp(text){
   if(!lastFocusNama) return text;
   const clean = String(text).replace(/\s+/g, ' ').trim();
@@ -2209,67 +2432,85 @@ function updateFocus(q){
   if(f.length && scoreMatch(cand, f[0].nama) >= 55) lastFocusNama = f[0].nama;
 }
 
-const SYSTEM_PROMPT =
-  'Kamu adalah "Tanya KOPENA", asisten data kantor untuk Koperasi KOPENA Limpung (koperasi simpan pinjam syariah). ' +
-  'Posisimu seperti rekan kerja yang hafal data nasabah dan enak diajak ngobrol.\n\n' +
+function buildSystemPrompt(){
+  const rules = loadRules();
+  const examples = loadExamples();
+  const corrections = buildCorrectionsPrompt();
+  return 'Kamu adalah "Tanya KOPENA", asisten data + analis untuk Koperasi KOPENA Limpung (koperasi simpan pinjam syariah). ' +
+    'Kamu hafal data nasabah, enak diajak ngobrol, DAN bisa menganalisis data.\n\n' +
 
-  'GAYA BICARA:\n' +
-  '- Santai dan hangat. Pakai "kamu" untuk pengguna dan "aku" untuk dirimu.\n' +
-  '- Ikuti panjang dan nada pengguna.\n' +
-  '- Jangan kaku seperti laporan resmi. Hindari "berikut adalah", "adapun", "sebagaimana".\n' +
-  '- Emoji boleh sesekali (paling banyak 1 per jawaban).\n\n' +
+    'GAYA BICARA:\n' +
+    '- Santai dan hangat. Pakai "kamu" untuk pengguna, "aku" untuk dirimu.\n' +
+    '- Ikuti panjang-nada pengguna: pertanyaan singkat dijawab singkat, pertanyaan rinci dijawab rinci.\n' +
+    '- Jangan kaku seperti laporan resmi. Hindari "berikut adalah", "adapun", "sebagaimana".\n' +
+    '- Emoji boleh sesekali (max 1 per jawaban).\n' +
+    '- Sapaan/terima kasih/obrolan ringan dibalas pendek, tanpa menyodorkan data.\n\n' +
 
-  'CARA MENJAWAB:\n' +
-  '1. Kalau ditanya 1 nasabah spesifik → JAWAB HANYA tentang orang itu.\n' +
-  '2. Kalau ditanya daftar → beri ringkasan 1-2 kalimat dulu.\n' +
-  '3. Kalau data tidak ada → bilang jujur dengan santai.\n' +
-  '4. Kalau pengguna bilang "dia", "orang tadi" → rujuk nasabah terakhir.\n\n' +
+    'CARA BERPIKIR (lakukan di kepalamu, jangan tuliskan):\n' +
+    '1. Apa sebenarnya yang ditanya?\n' +
+    '2. Data apa yang tersedia?\n' +
+    '3. Apakah ada nasabah spesifik yang dimaksud?\n' +
+    '4. Apakah ada konteks dari percakapan sebelumnya?\n' +
+    '5. Apakah ada ATURAN BISNIS yang relevan?\n' +
+    '6. Baru tulis jawaban.\n\n' +
 
-  'TENTANG REKENING:\n' +
-  '- Awalan 211 = rekening sukarela = ID resmi nasabah.\n' +
-  '- Awalan 541/542/543/544/551/111 = rekening pinjaman.\n' +
-  '- Nomor pinjaman lebih besar = pinjaman lebih baru.\n' +
-  '- Satu nasabah bisa punya beberapa rekening pinjaman.\n\n' +
+    'CARA MENJAWAB:\n' +
+    '1. Kalau ditanya 1 nasabah spesifik → JAWAB HANYA tentang orang itu.\n' +
+    '2. Kalau ditanya daftar → beri ringkasan 1-2 kalimat dulu, baru daftar.\n' +
+    '3. Kalau ditanya "analisa", "menurutmu", "gimana kondisi" → beri analisis mendalam:\n' +
+    '   • Kesimpulan utama\n   • Temuan penting (3-5 poin)\n   • Anomali (kalau ada)\n   • Rekomendasi aksi konkret\n' +
+    '4. Kalau data tidak ada → bilang jujur dengan santai.\n' +
+    '5. Kalau pengguna bilang "dia", "yang tadi" → rujuk nasabah terakhir.\n' +
+    '6. Kalau pengguna tanya foto → bilang "aku tampilkan fotonya di bawah" (sistem akan tampilkan otomatis).\n\n' +
 
-  'TENTANG SUMBER DATA:\n' +
-  '- Master (upload atau Sheets) = data resmi total nasabah.\n' +
-  '- Firebase = data kunjungan & laporan marketing (pelengkap).\n' +
-  '- Kalau ada konflik data, master yang menang.\n' +
-  '- Kalau pengguna upload file, file itu otomatis menggantikan master sebelumnya.\n\n' +
+    'TENTANG REKENING:\n' +
+    '- Awalan 211 = rekening sukarela = ID resmi nasabah.\n' +
+    '- Awalan 541/542/543/544/551/111 = rekening pinjaman.\n' +
+    '- Nomor pinjaman lebih besar = lebih baru. Pinjaman aktif = nomor terbesar.\n\n' +
 
-  'FORMAT ANGKA:\n' +
-  '- Rupiah: Rp 1.234.567 (pemisah titik)\n\n' +
+    'TENTANG SUMBER DATA:\n' +
+    '- Master (upload atau Sheets) = data resmi.\n' +
+    '- Firebase = kunjungan & laporan marketing (pelengkap).\n' +
+    '- Kalau konflik, master menang.\n\n' +
 
-  'ATURAN DATA:\n' +
-  '- Jawab HANYA dari DATA yang diberikan. Jangan ngarang.\n' +
-  '- Kalau menyebut nasabah, sebut rekening atau AO-nya.\n' +
-  '- Kalau ada foto atau GPS, sebutkan.\n' +
-  '- Kalau ditanya ANGSURAN: bedakan (a) Laporan Marketing yang punya tanggal pasti, dan (b) Master data yang hanya menandai setoran tanpa tanggal.';
+    'ATURAN BISNIS KANTOR (WAJIB DIPATUHI):\n' + (rules || '(belum ada)') + '\n\n' +
 
-async function askLLM(question, context, history){
+    'FORMAT ANGKA: Rp 1.234.567 (pemisah titik).\n\n' +
+
+    'ATURAN DATA:\n' +
+    '- Jawab HANYA dari DATA. Jangan ngarang.\n' +
+    '- Kalau menyebut nasabah, sebut rekening atau AO-nya.\n' +
+    '- Kalau ada foto/GPS, sebutkan.\n' +
+    '- Kalau ditanya ANGSURAN: bedakan Laporan Marketing (tanggal pasti) dan Master (tanpa tanggal).\n\n' +
+
+    (examples ? 'CONTOH PERCAKAPAN (tirukan gaya ini):\n' + examples + '\n\n' : '') +
+    (corrections || '');
+}
+
+async function askLLM(question, context, history, mode){
   const st = getSettings();
   if(!st.llmOn || !st.apiKey) return null;
   const url = (st.baseUrl || 'https://api.openai.com/v1').replace(/\/+$/, '') + '/chat/completions';
-
-  const msgs = [{ role: 'system', content: SYSTEM_PROMPT }];
+  const cfg = loadAnalysisCfg();
+  let systemPrompt = buildSystemPrompt();
+  if(mode === 'analysis' || cfg.analysisOn){
+    systemPrompt += '\n\nMODE ANALISIS AKTIF:\n' +
+      'Setelah jawaban utama, tambahkan bagian "📊 Analisis Singkat" berisi:\n' +
+      '- 1-2 temuan penting\n- Rekomendasi aksi konkret\n' +
+      'Jangan lebih dari 4 poin. Padat, hindari basa-basi.';
+  }
+  const msgs = [{ role: 'system', content: systemPrompt }];
   (history || []).forEach(m => {
     if(m && m.content) msgs.push({ role: m.role, content: String(m.content).slice(0, 1500) });
   });
-  msgs.push({
-    role: 'user',
-    content: 'DATA TERBARU:\n' + context + '\n\nPESAN PENGGUNA:\n' + question
-  });
-
+  msgs.push({ role: 'user', content: 'DATA TERBARU:\n' + context + '\n\nPESAN PENGGUNA:\n' + question });
   const res = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + st.apiKey
-    },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + st.apiKey },
     body: JSON.stringify({
       model: st.model || 'gpt-4o-mini',
-      temperature: 0.7,
-      max_tokens: 1200,
+      temperature: 0.65,
+      max_tokens: 1400,
       messages: msgs
     })
   });
@@ -2302,16 +2543,15 @@ function miniMarkdown(text){
   return out || '<p></p>';
 }
 
-/* ------------------------- 15. UI CHAT ------------------------- */
+/* ------------------------- 14. UI CHAT ------------------------- */
 const chatEl = $('#chat');
 const chipsEl = $('#chips');
 const inputEl = $('#q');
 const sendBtn = $('#btnSend');
 let busy = false;
+let lastUserQuestion = '';
 
-function scrollBottom(){
-  requestAnimationFrame(() => { chatEl.scrollTop = chatEl.scrollHeight; });
-}
+function scrollBottom(){ requestAnimationFrame(() => { chatEl.scrollTop = chatEl.scrollHeight; }); }
 function addUserMsg(text){
   const d = document.createElement('div');
   d.className = 'msg user';
@@ -2319,10 +2559,21 @@ function addUserMsg(text){
   chatEl.appendChild(d);
   scrollBottom();
 }
-function addAiMsg(html){
+function addAiMsg(html, opts){
+  opts = opts || {};
   const d = document.createElement('div');
   d.className = 'msg ai';
-  d.innerHTML = '<div class="avatar">TK</div><div class="bubble">' + html + '</div>';
+  const feedbackHtml = opts.fromLLM
+    ? '<div class="feedback-row">' +
+        '<button class="feedback-btn" data-feedback="wrong">❌ Salah</button>' +
+        '<button class="feedback-btn" data-feedback="ok">👍 Benar</button>' +
+      '</div>'
+    : '';
+  d.innerHTML = '<div class="avatar">TK</div><div class="bubble">' + html + feedbackHtml + '</div>';
+  if(opts.fromLLM){
+    d.dataset.llmAnswer = opts.llmText || '';
+    d.dataset.userQuestion = lastUserQuestion || '';
+  }
   chatEl.appendChild(d);
   scrollBottom();
   return d;
@@ -2335,18 +2586,15 @@ function addTyping(){
   chatEl.appendChild(d);
   scrollBottom();
 }
-function removeTyping(){
-  const t = $('#typingMsg');
-  if(t) t.remove();
-}
+function removeTyping(){ const t = $('#typingMsg'); if(t) t.remove(); }
 
 const DEFAULT_CHIPS = [
   'Kamu bisa apa aja?',
   'Berapa total nasabah?',
-  'Siapa aja yang sudah angsuran hari ini?',
+  'Analisa kondisi data kita',
   'Siapa aja yang belum dikunjungi?',
   'Ada yang janji bayar?',
-  'Rangkum dong data kita'
+  'Tunjukkan foto kunjungan terbaru'
 ];
 function renderChips(list){
   chipsEl.innerHTML = '';
@@ -2366,6 +2614,7 @@ async function ask(text){
   busy = true;
   sendBtn.disabled = true;
   inputEl.value = '';
+  lastUserQuestion = text;
   addUserMsg(text);
   addTyping();
 
@@ -2374,18 +2623,23 @@ async function ask(text){
   const q = resolveFollowUp(text);
   updateFocus(q);
 
+  const isAnalysisQuery = /analisa|analisis|menurutmu|gimana kondisi|kondisi kita|rekomendasi|saran|prediksi|perkiraan|potensi|risiko|risk/i.test(text);
+
   let html = '';
   let llmText = '';
   let llmFailed = false;
+  let fromLLM = false;
+
   try {
     const st = getSettings();
     if(st.llmOn && st.apiKey){
-      const ctx = buildContext(q);
+      const ctx = buildContext(q) + buildAnalyticsContext();
       try {
-        const llmOut = await askLLM(text, ctx, prior);
+        const llmOut = await askLLM(text, ctx, prior, isAnalysisQuery ? 'analysis' : '');
         if(llmOut){
           llmText = llmOut;
           html = miniMarkdown(llmOut);
+          fromLLM = true;
         }
       } catch(err){
         console.warn('LLM gagal', err);
@@ -2393,12 +2647,29 @@ async function ask(text){
         html = '<div class="err-box">AI tidak bisa dihubungi (' + esc(err.message) + '). Berikut hasil pencarian langsung:</div>';
       }
     }
-    if(!html || llmFailed){
-      html += buildLocalAnswer(q);
+
+    // === FIX FOTO: selalu cek & tambahkan foto yang relevan ===
+    const localAns = buildLocalAnswer(q);
+    const photoHtml = buildPhotoSection(q);
+
+    if(fromLLM && !llmFailed){
+      // Jawaban utama sudah dari LLM
+      // Tambahkan foto (selalu, kalau ada)
+      if(photoHtml) html += photoHtml;
+      // Kalau local answer punya res-card tapi belum ada di html, tambahkan
+      if(localAns.indexOf('res-card') >= 0 && html.indexOf('res-card') < 0 && !photoHtml){
+        html += '<hr><div class="dim">Data pendukung:</div>' + localAns;
+      }
     } else {
-      const extra = buildLocalAnswer(q);
-      if(extra && extra.indexOf('res-card') >= 0){
-        html += '<hr><div class="dim">Data pendukung:</div>' + extra;
+      // Pakai jawaban lokal sebagai utama
+      html = localAns;
+      // Tambahkan foto kalau belum ada di local answer
+      if(photoHtml && html.indexOf('foto-strip') < 0){
+        html += photoHtml;
+      } else if(photoHtml && html.indexOf('foto-strip') >= 0){
+        // Local answer sudah punya foto, tidak perlu tambah lagi
+      } else if(!photoHtml && !html) {
+        // nothing
       }
     }
   } catch(err){
@@ -2420,26 +2691,51 @@ async function ask(text){
   if(elapsed < 350) await new Promise(r => setTimeout(r, 350 - elapsed));
 
   removeTyping();
-  addAiMsg(html);
+  addAiMsg(html, { fromLLM, llmText });
   busy = false;
   sendBtn.disabled = false;
   inputEl.focus();
 }
 
 chatEl.addEventListener('click', e => {
+  // Feedback buttons
+  const fbBtn = e.target.closest('[data-feedback]');
+  if(fbBtn){
+    const msgEl = fbBtn.closest('.msg');
+    if(!msgEl) return;
+    const mode = fbBtn.dataset.feedback;
+    if(mode === 'ok'){
+      fbBtn.classList.add('done');
+      fbBtn.textContent = '✓ Dicatat';
+      msgEl.querySelectorAll('.feedback-btn').forEach(b => b.disabled = true);
+      return;
+    }
+    const q = msgEl.dataset.userQuestion || prompt('Pertanyaan pengguna:') || '';
+    const wrongAnswer = msgEl.dataset.llmAnswer || '';
+    const right = prompt(
+      'Jawaban yang seharusnya (koreksi):\n\n' +
+      'Pertanyaan: ' + q + '\n' +
+      'Jawaban AI: ' + wrongAnswer.slice(0, 200) + '\n\n' +
+      'Tulis jawaban yang benar:'
+    );
+    if(!right || !right.trim()) return;
+    addCorrection(q, wrongAnswer, right.trim());
+    msgEl.querySelectorAll('.feedback-btn').forEach(b => { b.disabled = true; b.style.opacity = .5; });
+    fbBtn.textContent = '✓ Koreksi disimpan';
+    fbBtn.classList.add('done');
+    return;
+  }
+
   const btn = e.target.closest('[data-open]');
   if(btn){ openDetail(btn.dataset.open); return; }
   const card = e.target.closest('.res-card');
   if(card && card.dataset.nama){ openDetail(card.dataset.nama); }
 });
 
-/* ------------------------- 16. DETAIL ------------------------- */
+/* ------------------------- 15. DETAIL ------------------------- */
 function openDetail(keyOrNama){
   let p = BY_NAME.get(normNama(keyOrNama));
-  if(!p){
-    const found = searchProfiles(keyOrNama, 1);
-    p = found[0];
-  }
+  if(!p){ const found = searchProfiles(keyOrNama, 1); p = found[0]; }
   if(!p) return;
   const m = p.master || {};
   const coll = (m.coll !== undefined && m.coll !== null && m.coll !== '') ? num(m.coll) : null;
@@ -2497,7 +2793,7 @@ function openDetail(keyOrNama){
   $('#detailOverlay').classList.add('show');
 }
 
-/* ------------------------- 17. PENGATURAN ------------------------- */
+/* ------------------------- 16. PENGATURAN ------------------------- */
 function refreshUploadInfo(){
   const box = $('#uploadInfoBox');
   if(!box) return;
@@ -2517,8 +2813,23 @@ function refreshUploadInfo(){
     clearUploaded();
     rebuild();
     refreshUploadInfo();
-    $('#settingsMsg').innerHTML = '<div class="ok-box">✓ Data upload dihapus. Kembali ke Sheets.</div>';
+    $('#settingsMsg').innerHTML = '<div class="ok-box">✓ Data upload dihapus.</div>';
   });
+}
+function renderCorrectionsList(){
+  const box = $('#correctionsList');
+  const list = loadCorrections().slice().reverse();
+  if(!list.length){
+    box.innerHTML = '<div class="dim" style="padding:8px">Belum ada koreksi. Klik ❌ di jawaban AI untuk menyimpan koreksi.</div>';
+    return;
+  }
+  box.innerHTML = list.map(c =>
+    '<div class="correction-item">' +
+      '<div class="q">Q: ' + esc(c.q) + '</div>' +
+      '<div class="wrong">❌ ' + esc(c.wrong.slice(0, 100)) + '</div>' +
+      '<div class="right">✓ ' + esc(c.right.slice(0, 200)) + '</div>' +
+    '</div>'
+  ).join('');
 }
 
 function openSettings(){
@@ -2529,6 +2840,20 @@ function openSettings(){
   $('#setModel').value = st.model || '';
   $('#settingsMsg').innerHTML = '';
   refreshUploadInfo();
+
+  $('#setRules').value = loadRules();
+  $('#setExamples').value = loadExamples();
+  const cfg = loadAnalysisCfg();
+  $('#setAnalysisOn').checked = !!cfg.analysisOn;
+  $('#setThresholdOs').value = cfg.thresholdOs;
+  $('#setThresholdDays').value = cfg.thresholdDays;
+
+  $$('#settingsTabs button').forEach((b, i) => b.classList.toggle('active', i === 0));
+  ['rules','examples','corrections','analysis'].forEach((t, i) => {
+    const el = $('#tab' + t.charAt(0).toUpperCase() + t.slice(1));
+    if(el) el.style.display = (i === 0) ? '' : 'none';
+  });
+
   $('#settingsOverlay').classList.add('show');
 }
 
@@ -2548,7 +2873,41 @@ $('#btnResetSettings').addEventListener('click', () => {
 });
 $('#btnManageUpload').addEventListener('click', refreshUploadInfo);
 
-/* ------------------------- 18. OVERLAY & INPUT ------------------------- */
+$('#settingsTabs').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-tab]');
+  if(!btn) return;
+  $$('#settingsTabs button').forEach(b => b.classList.toggle('active', b === btn));
+  ['rules','examples','corrections','analysis'].forEach(t => {
+    const el = $('#tab' + t.charAt(0).toUpperCase() + t.slice(1));
+    if(el) el.style.display = (t === btn.dataset.tab) ? '' : 'none';
+  });
+  if(btn.dataset.tab === 'corrections') renderCorrectionsList();
+});
+
+$('#btnSaveRules').addEventListener('click', () => {
+  saveRules($('#setRules').value);
+  $('#settingsMsg').innerHTML = '<div class="ok-box">✓ Aturan bisnis disimpan.</div>';
+});
+$('#btnSaveExamples').addEventListener('click', () => {
+  saveExamples($('#setExamples').value);
+  $('#settingsMsg').innerHTML = '<div class="ok-box">✓ Contoh percakapan disimpan.</div>';
+});
+$('#btnSaveAnalysis').addEventListener('click', () => {
+  saveAnalysisCfg({
+    analysisOn: $('#setAnalysisOn').checked,
+    thresholdOs: Number($('#setThresholdOs').value) || 10000000,
+    thresholdDays: Number($('#setThresholdDays').value) || 30
+  });
+  $('#settingsMsg').innerHTML = '<div class="ok-box">✓ Pengaturan analisis disimpan.</div>';
+});
+$('#btnClearCorrections').addEventListener('click', () => {
+  if(!confirm('Hapus semua koreksi?')) return;
+  localStorage.removeItem(CORRECTIONS_KEY);
+  renderCorrectionsList();
+  $('#settingsMsg').innerHTML = '<div class="ok-box">✓ Koreksi dihapus.</div>';
+});
+
+/* ------------------------- 17. OVERLAY & INPUT ------------------------- */
 $$('[data-close]').forEach(b => {
   b.addEventListener('click', () => $('#' + b.dataset.close).classList.remove('show'));
 });
@@ -2558,7 +2917,7 @@ $$('.overlay').forEach(ov => {
 
 $('#btnSettings').addEventListener('click', openSettings);
 $('#btnClearChat').addEventListener('click', () => {
-  if(!confirm('Mulai obrolan baru? Riwayat obrolan di HP ini akan dihapus.')) return;
+  if(!confirm('Mulai obrolan baru?')) return;
   CHAT_HIST = [];
   lastFocusNama = '';
   saveHist();
@@ -2570,12 +2929,9 @@ $('#btnReload').addEventListener('click', () => {
   listenBK(); listenMK(); fetchMaster();
   setTimeout(() => addAiMsg('<div class="ok-box">✓ Data dimuat ulang. ' + PROFILES.length + ' profil siap.</div>'), 1200);
 });
-$('#composer').addEventListener('submit', e => {
-  e.preventDefault();
-  ask(inputEl.value);
-});
+$('#composer').addEventListener('submit', e => { e.preventDefault(); ask(inputEl.value); });
 
-/* ------------------------- 19. UPLOAD FILE ------------------------- */
+/* ------------------------- 18. UPLOAD FILE ------------------------- */
 $('#btnAttach').addEventListener('click', () => $('#fileInput').click());
 
 $('#fileInput').addEventListener('change', async (e) => {
@@ -2593,7 +2949,6 @@ $('#fileInput').addEventListener('change', async (e) => {
     const rows = await parseAnyFile(file);
     saveUploaded(rows, file.name);
     rebuild();
-
     const cols = Object.keys(rows[0] || {});
     let html = '<h3>✅ File berhasil dimuat</h3>';
     html += '<div class="upload-info">';
@@ -2601,21 +2956,13 @@ $('#fileInput').addEventListener('change', async (e) => {
     html += rows.length + ' baris · ' + cols.length + ' kolom<br>';
     html += 'Kolom: <code>' + cols.map(c => esc(c)).join('</code> <code>') + '</code>';
     html += '</div>';
-    html += '<p>Data ini sekarang <b>MENGGANTIKAN</b> master data sebelumnya. Data dari Firebase (kunjungan & laporan) tetap digabung.</p>';
+    html += '<p>Data ini <b>MENGGANTIKAN</b> master sebelumnya. Firebase tetap digabung.</p>';
     html += '<p>Total profil: <b>' + PROFILES.length + '</b></p>';
-    html += '<div class="dim">Coba tanya: "berapa total nasabah sekarang?" atau "cari [nama]"</div>';
-
     removeTyping();
     addAiMsg(html);
-
     CHAT_HIST.push({ role: 'user', text: '📎 ' + file.name, ts: Date.now() });
-    CHAT_HIST.push({
-      role: 'assistant',
-      text: 'File ' + file.name + ' berhasil dimuat (' + rows.length + ' baris).',
-      html, ts: Date.now()
-    });
+    CHAT_HIST.push({ role: 'assistant', text: 'File ' + file.name + ' (' + rows.length + ' baris).', html, ts: Date.now() });
     saveHist();
-
   } catch(err){
     removeTyping();
     addAiMsg('<div class="err-box"><b>Gagal memuat file:</b><br>' + esc(err.message) + '</div>');
@@ -2626,7 +2973,7 @@ $('#fileInput').addEventListener('change', async (e) => {
   }
 });
 
-/* ------------------------- 20. SUARA ------------------------- */
+/* ------------------------- 19. SUARA ------------------------- */
 let recog = null, recording = false;
 const micBtn = $('#btnMic');
 function initSpeech(){
@@ -2647,25 +2994,19 @@ function initSpeech(){
 micBtn.addEventListener('click', () => {
   if(!recog){ alert('Perangkat ini tidak mendukung input suara.'); return; }
   if(recording){ recog.stop(); return; }
-  try {
-    recog.start();
-    recording = true;
-    micBtn.classList.add('rec');
-  } catch(e){
-    recording = false;
-    micBtn.classList.remove('rec');
-  }
+  try { recog.start(); recording = true; micBtn.classList.add('rec'); }
+  catch(e){ recording = false; micBtn.classList.remove('rec'); }
 });
 
-/* ------------------------- 21. START ------------------------- */
+/* ------------------------- 20. START ------------------------- */
 function greet(){
   const jam = new Date().getHours();
   const sapaan = jam < 11 ? 'Pagi' : jam < 15 ? 'Siang' : jam < 18 ? 'Sore' : 'Malam';
   const src = masterSourceLabel();
   addAiMsg(
     '<h3>' + sapaan + '! 👋 Aku Tanya KOPENA</h3>' +
-    '<p>Aku hafal data nasabah dari <b>Buku Kunjungan</b>, <b>Laporan Marketing</b>, dan <b>Data Nasabah</b>. Sumber master sekarang: <b>' + esc(src) + '</b>.</p>' +
-    '<div class="dim">📎 Upload file Excel/CSV/XML/PDF di tombol kiri untuk ganti data. Coba tanya: <code>riwayat Surip</code>, <code>siapa yang belum dikunjungi?</code>, atau <code>berapa total nasabah?</code> 😊</div>'
+    '<p>Aku hafal data nasabah dari <b>Buku Kunjungan</b>, <b>Laporan Marketing</b>, dan <b>Data Nasabah</b>. Sumber master: <b>' + esc(src) + '</b>.</p>' +
+    '<div class="dim">📎 Upload file Excel/CSV/XML/PDF di tombol kiri. Coba tanya: <code>riwayat Surip</code>, <code>siapa yang belum dikunjungi?</code>, atau <code>analisa kondisi data kita</code> 😊</div>'
   );
 }
 
