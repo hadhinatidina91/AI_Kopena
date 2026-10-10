@@ -165,7 +165,7 @@ const BLN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','De
 function fmtTgl(iso){if(!iso)return'-';const s=String(iso).slice(0,10);const m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m){const m2=s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);if(m2)return m2[1]+' '+BLN[parseInt(m2[2],10)-1]+' '+m2[3];return s}return parseInt(m[3],10)+' '+BLN[parseInt(m[2],10)-1]+' '+m[1]}
 function todayISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function toArray(v){if(!v)return[];if(Array.isArray(v))return v.filter(Boolean);if(typeof v==='object')return Object.keys(v).sort((a,b)=>{const na=parseInt(a,10),nb=parseInt(b,10);if(!isNaN(na)&&!isNaN(nb))return na-nb;return String(a).localeCompare(String(b))}).map(k=>v[k]).filter(Boolean);return[]}
-function extractFotos(v){if(!v)return[];const c=[v.photos,v.fotos,v.foto,v.photo,v.images,v.gambar];for(const x of c){const arr=toArray(x);const s=arr.filter(y=>typeof y==='string'&&y.length>20);if(s.length)return s}if(typeof v.photos==='string'&&v.photos.length>20)return[v.photos];if(typeof v.foto==='string'&&v.foto.length>20)return[v.foto];return[]}
+function extractFotos(v){if(!v)return[];const c=[v.photos,v.fotos,v.foto,v.photo,v.images,v.gambar];for(const x of c){const arr=toArray(x);const s=arr.map(y=>{if(typeof y==='string')return y;if(y&&typeof y==='object')return y.url||y.src||y.data||y.base64||'';return''}).filter(y=>typeof y==='string'&&y.length>20);if(s.length)return s}if(typeof v.photos==='string'&&v.photos.length>20)return[v.photos];if(typeof v.foto==='string'&&v.foto.length>20)return[v.foto];return[]}
 function waLink(no,nama){if(!no)return null;let d=String(no).replace(/\D/g,'');if(!d)return null;if(d.startsWith('0'))d='62'+d.slice(1);else if(!d.startsWith('62'))d='62'+d;const t=nama?'Halo '+nama+', ':'';return'https://wa.me/'+d+'?text='+encodeURIComponent(t)}
 function mapsUrl(a){if(!a)return null;let s=String(a).trim().replace(/\bDK\.?\s*/gi,'Dukuh ').replace(/\bDS\.?\s*/gi,'Desa ').replace(/\bKEC\.?\s*/gi,'Kecamatan ').replace(/\bRT\s*\/?\s*RW\.?\s*\d+\s*\/\s*\d*/gi,' ').replace(/\s+/g,' ').trim();if(!/batang/i.test(s))s+=', Batang, Jawa Tengah';return'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(s)}
 function mapsCoord(lat,lng){return'https://www.google.com/maps/search/?api=1&query='+lat+','+lng}
@@ -258,16 +258,21 @@ let bkListening=false,mkListening=false;
 function listenBK(){
   if(!bkDb||bkListening)return;
   bkListening=true;
-  bkDb.ref(BK_ROOT).on('value',snap=>{
-    const val=snap.val()||{};
-    const idx=parseJsonSafe(val[INDEX_KEY])||[];
+  // Index dulu (ringan) supaya status Kunjungan cepat hijau
+  bkDb.ref(BK_ROOT+'/'+INDEX_KEY).on('value',snap=>{
+    const idx=parseJsonSafe(snap.val())||[];
     DB.bk=(Array.isArray(idx)?idx:toArray(idx)).filter(n=>n&&!n.deletedAt);
-    const det=val[DETAIL_KEY]||{},out={};
+    DB.ready.bk=true;
+    updateStatus();
+  },err=>{console.warn('BK index',err)});
+  // Detail (berat, berisi foto base64) — terpisah agar tidak menggagalkan index
+  bkDb.ref(BK_ROOT+'/'+DETAIL_KEY).on('value',snap=>{
+    const det=snap.val()||{},out={};
     Object.keys(det).forEach(id=>{const d=parseJsonSafe(det[id]);if(d)out[id]=d});
     DB.bkDetail=out;
     DB.ready.bk=true;
     updateStatus();
-  },err=>{console.warn('BK',err)});
+  },err=>{console.warn('BK detail',err)});
 }
 function listenMK(){
   if(!mkDb||mkListening)return;
@@ -413,23 +418,41 @@ function getFirebaseTimeline(masterRec){
 
 /* ============ KARTU ============ */
 function badge(t,c){return'<span class="badge '+(c||'')+'">'+esc(t)+'</span>'}
+/* Registry foto — JANGAN taruh base64 di atribut HTML (terlalu besar, bisa rusak) */
+const FOTO_REG={};
+let FOTO_REG_ID=0;
+function regFotos(fotos){
+  const id='f'+(++FOTO_REG_ID);
+  FOTO_REG[id]=fotos;
+  return id;
+}
 function renderFotoStrip(fotos,big){
   if(!fotos||!fotos.length)return'';
   const cls=big?'foto-thumb big':'foto-thumb';
   const arr=fotos.slice(0,6);
-  const enc=encodeURIComponent(JSON.stringify(fotos));
+  const rid=regFotos(fotos);
   return'<div class="foto-strip">'+arr.map((f,i)=>
-    '<img class="'+cls+'" src="'+f+'" loading="lazy" onclick="event.stopPropagation();openLightbox('+i+',\''+enc+'\')" alt="Foto">'
+    '<img class="'+cls+'" src="'+f+'" loading="lazy" onclick="event.stopPropagation();openLightbox('+i+',\''+rid+'\')" alt="Foto">'
   ).join('')+(fotos.length>6?'<div style="font-size:11px;color:#69796f;align-self:center">+'+(fotos.length-6)+' lagi</div>':'')+'</div>';
 }
 
 let lbFotos=[],lbIdx=0;
-function openLightbox(i,enc){try{lbFotos=JSON.parse(decodeURIComponent(enc))}catch(e){lbFotos=[]}lbIdx=i||0;renderLightbox();$('#lightbox').classList.add('show')}
+function openLightbox(i,rid){
+  lbFotos=FOTO_REG[rid]||[];
+  lbIdx=i||0;
+  renderLightbox();
+  $('#lightbox').classList.add('show');
+}
 function closeLightbox(){$('#lightbox').classList.remove('show');lbFotos=[];lbIdx=0}
 function renderLightbox(){
   const box=$('#lightbox');if(!box||!lbFotos.length)return;
-  box.innerHTML='<button class="lb-close" onclick="closeLightbox()">✕</button><img src="'+lbFotos[lbIdx]+'" alt="Foto">'+
-    (lbFotos.length>1?'<div class="lb-info">Foto '+(lbIdx+1)+' dari '+lbFotos.length+'</div>':'');
+  const nav=lbFotos.length>1
+    ?('<div style="display:flex;gap:10px;align-items:center">'+
+      '<button type="button" onclick="event.stopPropagation();lbIdx=(lbIdx-1+lbFotos.length)%lbFotos.length;renderLightbox()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer">‹</button>'+
+      '<div class="lb-info">Foto '+(lbIdx+1)+' dari '+lbFotos.length+'</div>'+
+      '<button type="button" onclick="event.stopPropagation();lbIdx=(lbIdx+1)%lbFotos.length;renderLightbox()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer">›</button></div>')
+    :'';
+  box.innerHTML='<button class="lb-close" onclick="closeLightbox()">✕</button><img src="'+lbFotos[lbIdx]+'" alt="Foto">'+nav;
 }
 
 function collBadge(m){
@@ -517,18 +540,18 @@ function detectIntent(t){
   if(/^(kamu|km|kamu\s+siapa|siapa\s+kamu)$/i.test(clean))return'sapaan';
   if(/^(bisa\s+apa\s+aja|bisa\s+apa|fitur|menu|tolong|bantu|help)$/i.test(clean))return'bantuan';
 
-  if(/\blunas\b/.test(s))return'lunas';
-  if(/\b(coll|call|kol)\b/.test(s))return'coll';
+  if(/\blunas\b/.test(s)||has('saldo nol','sudah lunas'))return'lunas';
+  if(/\b(coll|call|kol)\b/.test(s)||has('macet','bermasalah','coll gede','call tinggi'))return'coll';
   if(has('janji bayar','janji','berjanji','sanggup bayar'))return'janji';
-  if(/belum\s+(pernah\s+)?(di)?kunjung/.test(s)||has('belum ada kunjungan'))return'belum';
+  if(/belum\s+(pernah\s+)?(di)?kunjung/.test(s)||has('belum ada kunjungan','belum disentuh','belum dicek'))return'belum';
   if(has('foto','photo','gambar','dokumentasi'))return'foto';
   if(has('riwayat','histori','kapan dikunjungi','hasil kunjungan','catatan'))return'riwayat';
-  if(has('laporan marketing','laporan harian','cek laporan','laporan marketing','marketing tanggal','laporan tanggal')||(/\blaporan\b/.test(s)&&has('marketing','harian','tanggal')))return'laporan';
-  if(/angsur|setor|\bbayar\b/.test(s))return'angsuran';
+  if(has('laporan marketing','laporan harian','cek laporan','marketing tanggal','laporan tanggal','laporan lapangan','ngapain di lapangan','kegiatan ao')||(/\blaporan\b/.test(s)&&has('marketing','harian','tanggal','lapangan')))return'laporan';
+  if(/angsur|setor|nyetor|\bbayar\b|nunggak/.test(s))return'angsuran';
   if(/(total|jumlah|berapa).*(nasabah|rekening|anggota)/.test(s))return'total';
   if(has('rangkum','statistik','ringkasan'))return'statistik';
-  if(has('tunggakan','outstanding','terbesar','piutang'))return'tunggakan';
-  if(/\bao\b/.test(s))return'ao';
+  if(has('tunggakan','outstanding','terbesar','piutang','os terbesar'))return'tunggakan';
+  if(/\bao\b/.test(s)||has('rekap per ao','per ao'))return'ao';
   if(has('kunjungan'))return'riwayat';
   return'cari';
 }
@@ -991,26 +1014,140 @@ let lastNama='',HIST=[];
 
 function llmSystemPrompt(){
   const aos=[...new Set(DB.master.map(m=>m.ao).filter(Boolean))].join('; ');
-  return 'Kamu pemroses pertanyaan untuk aplikasi data nasabah koperasi KOPENA Limpung. Tugasmu HANYA mengubah pertanyaan pengguna menjadi satu objek JSON perintah. JANGAN pernah menyebut angka data. JANGAN bilang "tidak punya akses" — semua data nasabah, kunjungan, dan laporan marketing sudah tersedia di aplikasi.\n'+
-  'Format: {"intent":"...","nama":string|null,"belum":boolean,"coll":number|null,"coll_tinggi":boolean,"ao":string|null,"tanggal":string|null,"balasan":string|null}\n'+
-  'Intent yang tersedia:\n'+
-  '- cari: profil/data satu nasabah (isi nama)\n'+
-  '- riwayat: riwayat kunjungan/penagihan satu nasabah (isi nama)\n'+
-  '- foto: foto kunjungan (nama opsional)\n'+
-  '- angsuran: sudah/belum angsur atau bayar. belum=true jika menanyakan yang BELUM. Isi nama jika tentang satu orang.\n'+
-  '- lunas: jumlah/daftar rekening lunas\n'+
-  '- coll: kolektibilitas/call. Isi coll (angka) jika disebut; coll_tinggi=true jika menanyakan yang tinggi/bermasalah; tanpa keduanya = sebaran semua coll.\n'+
-  '- total: jumlah nasabah/rekening\n'+
-  '- statistik: rangkuman umum\n'+
-  '- tunggakan: outstanding terbesar\n'+
-  '- janji: janji bayar\n'+
-  '- laporan: laporan marketing / laporan harian. Isi tanggal (format YYYY-MM-DD) jika disebut. Isi ao jika menyebut nama AO. Contoh: "cek laporan marketing tanggal 29 september 2026" → intent laporan, tanggal "2026-09-29"; "laporan marketing Dimas tanggal 21 september" → intent laporan, tanggal "2026-09-21", ao "DIMAS RIZKI PUTRA SULISTIO".\n'+
-  '- belum_dikunjungi: yang belum pernah dikunjungi\n'+
-  '- ao: rekap per AO (isi ao persis dari daftar jika menyebut satu AO)\n'+
-  '- diagnosa, bantuan\n'+
-  '- ngobrol: HANYA untuk sapaan murni (halo, terima kasih, siapa kamu). JANGAN pakai ngobrol jika pertanyaan menyebut data, laporan, nasabah, angsuran, kunjungan, coll, AO, atau tanggal. Isi balasan maksimal 2 kalimat Indonesia santai, tanpa angka.\n'+
-  'Jika pengguna menyebut "dia/nya/yang tadi", pakai nama terakhir: '+(lastNama||'(belum ada)')+'.\n'+
-  'Daftar AO: '+(aos||'-')+'\nKeluarkan JSON saja.';
+  const today=todayISO();
+  return (
+'Kamu pemroses pertanyaan untuk aplikasi data nasabah koperasi KOPENA Limpung.\n'+
+'Tugasmu HANYA mengubah pertanyaan pengguna menjadi SATU objek JSON perintah.\n'+
+'JANGAN pernah menyebut angka, saldo, jumlah nasabah, atau isi data.\n'+
+'JANGAN bilang "tidak punya akses" — semua data nasabah, kunjungan, angsuran, dan laporan marketing sudah tersedia di aplikasi.\n'+
+'JANGAN menjawab dengan teks biasa. Keluarkan JSON saja.\n'+
+'\n'+
+'Format wajib:\n'+
+'{"intent":"...","nama":string|null,"belum":boolean,"coll":number|null,"coll_tinggi":boolean,"ao":string|null,"tanggal":string|null,"balasan":string|null}\n'+
+'\n'+
+'Aturan tanggal:\n'+
+'- Format tanggal selalu YYYY-MM-DD bila diketahui.\n'+
+'- "hari ini" → '+today+'\n'+
+'- "kemarin" → tanggal kemarin (hitung dari hari ini)\n'+
+'- "29 september 2026" / "29/09/2026" / "2026-09-29" → "2026-09-29"\n'+
+'- Jika tidak disebut, tanggal=null\n'+
+'\n'+
+'Aturan nama & AO:\n'+
+'- Isi "nama" hanya untuk nama NASABAH/debitur (bukan AO).\n'+
+'- Isi "ao" hanya jika menyebut Account Officer. Cocokkan ke daftar AO di bawah bila mirip.\n'+
+'- Jika pengguna bilang "dia/nya/yang tadi/nasabah itu", pakai nama terakhir: '+(lastNama||'(belum ada)')+'.\n'+
+'\n'+
+'Daftar AO: '+(aos||'-')+'\n'+
+'\n'+
+'Intent yang tersedia:\n'+
+'- cari — profil/data satu nasabah (isi nama)\n'+
+'- riwayat — riwayat kunjungan/penagihan satu nasabah (isi nama)\n'+
+'- foto — foto kunjungan (nama opsional; isi tanggal jika disebut)\n'+
+'- angsuran — status sudah/belum angsur/bayar/setor. belum=true jika menanyakan yang BELUM. Isi nama jika tentang satu orang.\n'+
+'- lunas — jumlah/daftar rekening lunas\n'+
+'- coll — kolektibilitas/call. Isi coll (angka 0-5) jika disebut; coll_tinggi=true jika macet/tinggi/bermasalah; tanpa keduanya = sebaran semua\n'+
+'- total — jumlah nasabah/rekening\n'+
+'- statistik — rangkuman umum / ringkasan data\n'+
+'- tunggakan — outstanding terbesar / piutang terbesar\n'+
+'- janji — janji bayar (termasuk yang sudah lewat target)\n'+
+'- laporan — laporan marketing / laporan harian lapangan. Isi tanggal dan/atau ao jika disebut\n'+
+'- belum_dikunjungi — yang belum pernah dikunjungi\n'+
+'- ao — rekap per AO (isi ao jika menyebut satu AO)\n'+
+'- diagnosa — cek data mentah / debug\n'+
+'- bantuan — daftar fitur / contoh pertanyaan\n'+
+'- ngobrol — HANYA untuk sapaan murni (halo, terima kasih, siapa kamu, oke). Isi balasan maksimal 2 kalimat Indonesia santai, tanpa angka.\n'+
+'\n'+
+'ATURAN PENTING — jangan pakai ngobrol jika pertanyaan mengandung salah satu:\n'+
+'nasabah, anggota, debitur, rekening, angsur, setor, bayar, lunas, coll, call, kol, tunggakan, outstanding, kunjungan, riwayat, foto, laporan, marketing, AO, janji, priorit, macet, belum, sudah, berapa, siapa, daftar, rekap, statistik, rangkum, diagnosa, tanggal, kemarin, hari ini.\n'+
+'\n'+
+'Sinonim yang harus dikenali:\n'+
+'- angsuran/belum angsur: nyetor, setor, bayar, belum bayar, udah bayar, belum nyetor, status angsur, yang nunggak bayar\n'+
+'- coll tinggi: macet, bermasalah, jelek, coll gede, call tinggi, kol 3, kol 4, kol 5\n'+
+'- laporan: laporan marketing, laporan harian, laporan lapangan, hasil kunjungan marketing, kegiatan AO, ngapain di lapangan\n'+
+'- belum dikunjungi: belum pernah dikunjungi, belum ada kunjungan, belum disentuh, belum dicek\n'+
+'- tunggakan: OS terbesar, piutang terbesar, saldo terbesar, outstanding tertinggi\n'+
+'- lunas: sudah lunas, saldo nol, yang lunas\n'+
+'- total: berapa nasabah, jumlah rekening, berapa anggota\n'+
+'\n'+
+'Contoh (ikuti polanya):\n'+
+'\n'+
+'User: siapa aja yang belum nyetor?\n'+
+'JSON: {"intent":"angsuran","nama":null,"belum":true,"coll":null,"coll_tinggi":false,"ao":null,"tanggal":null,"balasan":null}\n'+
+'\n'+
+'User: berapa yang sudah angsur?\n'+
+'JSON: {"intent":"angsuran","nama":null,"belum":false,"coll":null,"coll_tinggi":false,"ao":null,"tanggal":null,"balasan":null}\n'+
+'\n'+
+'User: Surip udah bayar belum?\n'+
+'JSON: {"intent":"angsuran","nama":"Surip","belum":false,"coll":null,"coll_tinggi":false,"ao":null,"tanggal":null,"balasan":null}\n'+
+'\n'+
+'User: yang macet-macet itu siapa?\n'+
+'JSON: {"intent":"coll","nama":null,"belum":false,"coll":null,"coll_tinggi":true,"ao":null,"tanggal":null,"balasan":null}\n'+
+'\n'+
+'User: coll 3\n'+
+'JSON: {"intent":"coll","nama":null,"belum":false,"coll":3,"coll_tinggi":false,"ao":null,"tanggal":null,"balasan":null}\n'+
+'\n'+
+'User: sebaran call\n'+
+'JSON: {"intent":"coll","nama":null,"belum":false,"coll":null,"coll_tinggi":false,"ao":null,"tanggal":null,"balasan":null}\n'+
+'\n'+
+'User: cek laporan marketing tanggal 29 september 2026\n'+
+'JSON: {"intent":"laporan","nama":null,"belum":false,"coll":null,"coll_tinggi":false,"ao":null,"tanggal":"2026-09-29","balasan":null}\n'+
+'\n'+
+'User: laporan Dimas kemarin\n'+
+'JSON: {"intent":"laporan","nama":null,"belum":false,"coll":null,"coll_tinggi":false,"ao":"DIMAS RIZKI PUTRA SULISTIO","tanggal":null,"balasan":null}\n'+
+'\n'+
+'User: Dimas kemarin ngapain aja di lapangan?\n'+
+'JSON: {"intent":"laporan","nama":null,"belum":false,"coll":null,"coll_tinggi":false,"ao":"DIMAS RIZKI PUTRA SULISTIO","tanggal":null,"balasan":null}\n'+
+'\n'+
+'User: laporan marketing 21/09/2026\n'+
+'JSON: {"intent":"laporan","nama":null,"belum":false,"coll":null,"coll_tinggi":false,"ao":null,"tanggal":"2026-09-21","balasan":null}\n'+
+'\n'+
+'User: ada yang janji bayar?\n'+
+'JSON: {"intent":"janji","nama":null,"belum":false,"coll":null,"coll_tinggi":false,"ao":null,"tanggal":null,"balasan":null}\n'+
+'\n'+
+'User: siapa yang belum dikunjungi?\n'+
+'JSON: {"intent":"belum_dikunjungi","nama":null,"belum":false,"coll":null,"coll_tinggi":false,"ao":null,"tanggal":null,"balasan":null}\n'+
+'\n'+
+'User: riwayat kunjungan Surip\n'+
+'JSON: {"intent":"riwayat","nama":"Surip","belum":false,"coll":null,"coll_tinggi":false,"ao":null,"tanggal":null,"balasan":null}\n'+
+'\n'+
+'User: foto Surip\n'+
+'JSON: {"intent":"foto","nama":"Surip","belum":false,"coll":null,"coll_tinggi":false,"ao":null,"tanggal":null,"balasan":null}\n'+
+'\n'+
+'User: cari Ahmad Rizki\n'+
+'JSON: {"intent":"cari","nama":"Ahmad Rizki","belum":false,"coll":null,"coll_tinggi":false,"ao":null,"tanggal":null,"balasan":null}\n'+
+'\n'+
+'User: berapa nasabah kita?\n'+
+'JSON: {"intent":"total","nama":null,"belum":false,"coll":null,"coll_tinggi":false,"ao":null,"tanggal":null,"balasan":null}\n'+
+'\n'+
+'User: rangkum data\n'+
+'JSON: {"intent":"statistik","nama":null,"belum":false,"coll":null,"coll_tinggi":false,"ao":null,"tanggal":null,"balasan":null}\n'+
+'\n'+
+'User: tunggakan terbesar\n'+
+'JSON: {"intent":"tunggakan","nama":null,"belum":false,"coll":null,"coll_tinggi":false,"ao":null,"tanggal":null,"balasan":null}\n'+
+'\n'+
+'User: rekap per AO\n'+
+'JSON: {"intent":"ao","nama":null,"belum":false,"coll":null,"coll_tinggi":false,"ao":null,"tanggal":null,"balasan":null}\n'+
+'\n'+
+'User: berapa yang lunas?\n'+
+'JSON: {"intent":"lunas","nama":null,"belum":false,"coll":null,"coll_tinggi":false,"ao":null,"tanggal":null,"balasan":null}\n'+
+'\n'+
+'User: diagnosa\n'+
+'JSON: {"intent":"diagnosa","nama":null,"belum":false,"coll":null,"coll_tinggi":false,"ao":null,"tanggal":null,"balasan":null}\n'+
+'\n'+
+'User: bantuan\n'+
+'JSON: {"intent":"bantuan","nama":null,"belum":false,"coll":null,"coll_tinggi":false,"ao":null,"tanggal":null,"balasan":null}\n'+
+'\n'+
+'User: halo\n'+
+'JSON: {"intent":"ngobrol","nama":null,"belum":false,"coll":null,"coll_tinggi":false,"ao":null,"tanggal":null,"balasan":"Halo! Ada yang bisa dibantu soal nasabah, angsuran, atau laporan?"}\n'+
+'\n'+
+'User: terima kasih\n'+
+'JSON: {"intent":"ngobrol","nama":null,"belum":false,"coll":null,"coll_tinggi":false,"ao":null,"tanggal":null,"balasan":"Sama-sama! Silakan tanya lagi kalau butuh."}\n'+
+'\n'+
+'User: kamu siapa?\n'+
+'JSON: {"intent":"ngobrol","nama":null,"belum":false,"coll":null,"coll_tinggi":false,"ao":null,"tanggal":null,"balasan":"Aku Tanya KOPENA, asisten data kantor. Bisa bantu cari nasabah, angsuran, kunjungan, dan laporan marketing."}\n'+
+'\n'+
+'Keluarkan JSON saja, tanpa markdown, tanpa penjelasan.'
+  );
 }
 async function groqPost(key,model,msgs,reason){
   const body={model:model,messages:msgs,temperature:0,max_tokens:900};
