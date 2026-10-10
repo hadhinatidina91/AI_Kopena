@@ -281,7 +281,6 @@ body{
   font-weight:700;cursor:pointer;
 }
 
-/* === Feedback & Analisis === */
 .feedback-row{
   display:flex;gap:6px;margin-top:8px;padding-top:8px;
   border-top:1px dashed var(--line);
@@ -309,12 +308,8 @@ body{
 .insight-card p{margin:0 0 6px;font-size:13px}
 .insight-card p:last-child{margin-bottom:0}
 
-.metric-grid{
-  display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0;
-}
-.metric{
-  background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 11px;
-}
+.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.metric{background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 11px}
 .metric .lbl{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;display:block}
 .metric .val{font-size:17px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
 .metric .sub{font-size:11px;color:var(--muted);margin-top:1px}
@@ -355,6 +350,14 @@ body{
   border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;
 }
 .section-tab button.active{color:var(--brand);border-bottom-color:var(--brand)}
+
+.url-status{
+  font-size:12px;padding:8px 11px;border-radius:8px;margin:8px 0;
+  background:#eef3f1;color:var(--muted);word-break:break-all;
+}
+.url-status.ok{background:var(--green-soft);color:var(--green)}
+.url-status.err{background:var(--red-soft);color:var(--red)}
+.url-status.loading{background:#fbf3e2;color:var(--amber)}
 </style>
 </head>
 <body>
@@ -376,7 +379,7 @@ body{
 
 <form class="composer" id="composer" autocomplete="off">
   <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.xml,.pdf" style="display:none">
-  <button type="button" id="btnAttach" title="Upload file data (Excel/CSV/XML/PDF)">📎</button>
+  <button type="button" id="btnAttach" title="Upload file data">📎</button>
   <button type="button" id="btnMic" title="Tanya dengan suara">🎤</button>
   <input id="q" placeholder="Tanya apa saja tentang nasabah…" autocomplete="off" enterkeyhint="send">
   <button type="submit" id="btnSend" title="Kirim">➤</button>
@@ -390,29 +393,29 @@ body{
     </div>
     <div class="sheet-body">
       <div class="hint">
-        <b>Tanya KOPENA</b> menggabungkan 3 sumber data Anda:
-        <br>1. <b>Buku Kunjungan Nasabah</b> (Firebase catatanpembiayaan)
-        <br>2. <b>Laporan Marketing Harian</b> (Firebase pembiayaankpnlimpung)
-        <br>3. <b>Data Nasabah / pembiayaan</b> (Google Sheets atau file upload)
+        <b>Tanya KOPENA</b> menggabungkan 3 sumber data:
+        <br>1. <b>Buku Kunjungan</b> (Firebase catatanpembiayaan)
+        <br>2. <b>Laporan Marketing</b> (Firebase pembiayaankpnlimpung)
+        <br>3. <b>Data Nasabah</b> (URL / Upload / Google Sheets)
       </div>
 
       <div class="switch-row">
         <span>Jawaban bebas dengan AI (LLM)</span>
         <label class="switch"><input type="checkbox" id="setLlmOn"><span class="slider"></span></label>
       </div>
-      <div class="hint">Jika aktif, hasil pencarian data akan dirangkum oleh AI menjadi jawaban bahasa natural. Kunci API hanya disimpan di HP ini.</div>
+      <div class="hint">Jika aktif, jawaban dirangkum oleh AI. Kunci API hanya disimpan di HP ini.</div>
 
       <div class="fgroup">
         <label>Base URL (OpenAI-compatible)</label>
-        <input id="setBaseUrl" placeholder="https://api.openai.com/v1">
+        <input id="setBaseUrl" placeholder="https://api.groq.com/openai/v1">
       </div>
       <div class="fgroup">
         <label>API Key</label>
-        <input id="setApiKey" type="password" placeholder="sk-…">
+        <input id="setApiKey" type="password" placeholder="sk-… / gsk_…">
       </div>
       <div class="fgroup">
         <label>Model</label>
-        <input id="setModel" placeholder="gpt-4o-mini">
+        <input id="setModel" placeholder="gpt-4o-mini / llama-3.3-70b-versatile">
       </div>
 
       <button class="btn-primary" id="btnSaveSettings">Simpan Pengaturan</button>
@@ -423,32 +426,49 @@ body{
       <div style="height:14px;border-top:1px solid var(--line);margin:14px 0"></div>
 
       <div class="section-tab" id="settingsTabs">
-        <button data-tab="rules" class="active">📋 Aturan Bisnis</button>
-        <button data-tab="examples">💬 Contoh Jawaban</button>
+        <button data-tab="url" class="active">🌐 Sumber URL</button>
+        <button data-tab="rules">📋 Aturan</button>
+        <button data-tab="examples">💬 Contoh</button>
         <button data-tab="corrections">🔧 Koreksi</button>
         <button data-tab="analysis">📊 Analisis</button>
       </div>
 
-      <div id="tabRules" class="settings-tab">
-        <div class="hint">Aturan main kantor kamu — AI akan mematuhi ini saat menjawab. Satu aturan per baris.</div>
-        <textarea id="setRules" class="rule-editor" placeholder="- Nasabah coll 3+ = prioritas kunjungan
-- Kalau belum bayar >2 bulan dan belum dikunjungi → urgent
-- Angsuran > 5jt → highlight"></textarea>
+      <div id="tabUrl" class="settings-tab">
+        <div class="hint">
+          Ambil data master langsung dari aplikasi web kamu. Tanya KOPENA akan fetch data terbaru secara otomatis.<br><br>
+          <b>Contoh URL:</b><br>
+          <code>https://tungcab-limpung.vercel.app/</code>
+        </div>
+
+        <div class="fgroup">
+          <label>URL Data Nasabah (master)</label>
+          <input id="setUrlMaster" type="url" placeholder="https://tungcab-limpung.vercel.app/">
+        </div>
+
+        <div class="fgroup">
+          <label>Auto-refresh (menit)</label>
+          <input id="setUrlInterval" type="number" placeholder="30" min="5">
+        </div>
+
+        <button class="btn-primary" id="btnFetchUrl">🌐 Ambil Data Sekarang</button>
+        <button class="btn-ghost" id="btnSaveUrlCfg">💾 Simpan Pengaturan URL</button>
+        <div id="urlStatus" class="url-status" style="display:none"></div>
+      </div>
+
+      <div id="tabRules" class="settings-tab" style="display:none">
+        <div class="hint">Aturan main kantor kamu — AI akan mematuhi ini saat menjawab.</div>
+        <textarea id="setRules" class="rule-editor"></textarea>
         <button class="btn-primary" style="margin-top:8px" id="btnSaveRules">Simpan Aturan</button>
       </div>
 
       <div id="tabExamples" class="settings-tab" style="display:none">
-        <div class="hint">Contoh percakapan ideal. Format: <code>Q: pertanyaan</code> lalu <code>A: jawaban</code>. Pisahkan antar contoh dengan baris kosong.</div>
-        <textarea id="setExamples" class="example-editor" placeholder="Q: Bu Sri udah bayar belum?
-A: Bu Sri (rek 541052001586) belum ada catatan bayar bulan ini. Angsuran wajibnya Rp 9.479.167.
-
-Q: Siapa yang coll 3?
-A: Ada 19 nasabah coll 3, total outstanding Rp XXX."></textarea>
+        <div class="hint">Contoh percakapan ideal. Format: <code>Q: pertanyaan</code> lalu <code>A: jawaban</code>.</div>
+        <textarea id="setExamples" class="example-editor"></textarea>
         <button class="btn-primary" style="margin-top:8px" id="btnSaveExamples">Simpan Contoh</button>
       </div>
 
       <div id="tabCorrections" class="settings-tab" style="display:none">
-        <div class="hint">Setiap kali kamu klik ❌ di jawaban AI, koreksinya tersimpan di sini. AI akan belajar dari kesalahannya.</div>
+        <div class="hint">Setiap klik ❌ di jawaban AI, koreksinya tersimpan di sini.</div>
         <div id="correctionsList" class="corrections-list"></div>
         <button class="btn-ghost" id="btnClearCorrections">🗑 Hapus Semua Koreksi</button>
       </div>
@@ -458,7 +478,6 @@ A: Ada 19 nasabah coll 3, total outstanding Rp XXX."></textarea>
           <span>Aktifkan analisis mendalam</span>
           <label class="switch"><input type="checkbox" id="setAnalysisOn"><span class="slider"></span></label>
         </div>
-        <div class="hint">Kalau aktif, setiap jawaban AI disertai analisis tambahan.</div>
         <div class="fgroup">
           <label>Ambang outstanding besar (Rp)</label>
           <input id="setThresholdOs" type="number" placeholder="10000000">
@@ -484,10 +503,8 @@ A: Ada 19 nasabah coll 3, total outstanding Rp XXX."></textarea>
 
 <script>
 /* =====================================================================
-   TANYA KOPENA — v4
-   Master data: file upload (kalau ada) ATAU Google Sheets
-   Pelengkap: Firebase Buku Kunjungan + Laporan Marketing
-   Fitur: Rules, Corrections, Analysis, Photo Auto-Show
+   TANYA KOPENA — v5
+   Fitur: URL source, foto auto, analisis, koreksi, upload file
    ===================================================================== */
 
 /* ------------------------- 1. KONFIGURASI ------------------------- */
@@ -528,7 +545,6 @@ function num(v){
   return isNaN(n) ? 0 : n;
 }
 
-/* ==== PARSING REKENING ==== */
 const AWALAN_SUKARELA = '211';
 const AWALAN_PINJAMAN = ['541','542','543','544','551','111'];
 
@@ -542,20 +558,15 @@ function isPinjaman(rek){
   if(r.length < 10) return false;
   return AWALAN_PINJAMAN.includes(r.slice(0, 3));
 }
-function isSukarela(rek){
-  return cleanRek(rek).slice(0, 3) === AWALAN_SUKARELA;
-}
+function isSukarela(rek){ return cleanRek(rek).slice(0, 3) === AWALAN_SUKARELA; }
 function pinjamanTerbesar(listRek){
   const pinj = listRek.filter(isPinjaman).map(cleanRek);
   if(!pinj.length) return '';
   pinj.sort((a,b) => Number(b) - Number(a));
   return pinj[0];
 }
-function rekeningSukarela(listRek){
-  return listRek.find(isSukarela) || '';
-}
+function rekeningSukarela(listRek){ return listRek.find(isSukarela) || ''; }
 
-/* ==== NORMALISASI NAMA ==== */
 function normNama(s){
   let t = String(s || '').toUpperCase();
   t = t.replace(/\b(H|HJ|HAJI|HAJAH|MUH|MOH|MOHAMMAD|MUHAMMAD|ABD|ABDUL|RADEN|MAS|MBAH|PAK|BU|BAPAK|IBU|SDR|SDRI|BPK|NY|NN|TUAN|NYONYA)\.?\s+/g, ' ');
@@ -565,8 +576,6 @@ function normNama(s){
 function norm(s){
   return String(s || '').toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 }
-
-/* ==== LEVENSHTEIN ==== */
 function levenshtein(a, b){
   if(a === b) return 0;
   if(!a.length) return b.length;
@@ -582,7 +591,6 @@ function levenshtein(a, b){
   return m[b.length][a.length];
 }
 
-/* ==== FOTO ==== */
 function toArray(v){
   if(!v) return [];
   if(Array.isArray(v)) return v.filter(Boolean);
@@ -611,7 +619,6 @@ function extractFotos(v){
   return [];
 }
 
-/* ==== FORMAT ==== */
 function fmtRp(v){
   const n = Math.round(num(v));
   if(Math.abs(n) >= 1e9) return 'Rp ' + (n/1e9).toFixed(2) + ' M';
@@ -794,7 +801,6 @@ function normalizeRow(row){
   }
   return out;
 }
-
 function isExcelXml(text){
   const head = String(text).slice(0, 2000);
   return /<\?xml/i.test(head) && /schemas-microsoft-com:office:spreadsheet/i.test(String(text).slice(0, 5000));
@@ -811,7 +817,6 @@ function parseTunggakanXlsXml(text){
   let cabang = '';
   const kantorMatch = String(text).match(/Keseluruhan Kantor\s*:\s*\d+\s*\/\s*([^<]+?)(?:<|\s{2,})/i);
   if(kantorMatch) cabang = decodeXmlEntities(kantorMatch[1]).trim();
-
   let currentProduk = '';
   let currentKodeProduk = '';
   const rowRe = /<Row[^>]*>([\s\S]*?)<\/Row>/g;
@@ -826,7 +831,6 @@ function parseTunggakanXlsXml(text){
       cells.push(decodeXmlEntities(dm[1]).trim());
     }
     if(cells.length === 0) continue;
-
     const sectionMatch = cells[0].match(/^(\d{3})\s*\/\s*(.+)$/);
     if(sectionMatch){
       currentKodeProduk = sectionMatch[1];
@@ -836,7 +840,6 @@ function parseTunggakanXlsXml(text){
     if(cells[0].indexOf('T O T A L') !== -1) continue;
     if(!/^\d+$/.test(cells[0])) continue;
     if(cells.length < 17) continue;
-
     const no_rekening = cells[0];
     const nama = cells[1];
     const plafon = num(cells[2]);
@@ -850,7 +853,6 @@ function parseTunggakanXlsXml(text){
     const tunggakan_akhir_margin = num(cells[13]);
     const tgl_jatuh_tempo = String(cells[15] || '').trim().split(' ')[0];
     const ao = cells[16];
-
     records.push({
       no_rekening, nama, plafon, saldo,
       produk: currentProduk, ao, angsuran_bulanan,
@@ -860,7 +862,8 @@ function parseTunggakanXlsXml(text){
       sisa_total_akhir: tunggakan_akhir_pokok + tunggakan_akhir_margin,
       tgl_jatuh_tempo,
       kode_produk: currentKodeProduk,
-      sudah_angsur: (pembayaran_pokok > 0 || pembayaran_margin > 0),
+      // ⭐ FIX: sudah_angsur hanya berdasarkan POKOK
+      sudah_angsur: (pembayaran_pokok > 0),
       coll, cabang,
       kode_tipe: currentKodeProduk.startsWith('1') ? '1' : '5',
       margin_rate: 0, tgl_mulai: '', no_akad: '',
@@ -877,7 +880,7 @@ async function parseExcel(file){
   const raw = XLSX.utils.sheet_to_json(sh, { defval: '' });
   if(!raw.length) throw new Error('File kosong.');
   const rows = raw.map(normalizeRow).filter(r => r.nama || r.no_rekening);
-  if(!rows.length) throw new Error('Tidak ada kolom "nama" atau "no_rekening" yang cocok.');
+  if(!rows.length) throw new Error('Tidak ada kolom "nama" atau "no_rekening".');
   return rows;
 }
 function parseCSVLine(line){
@@ -928,7 +931,7 @@ async function parsePDF(file){
     const matched = cells.filter(c => matchHeader(c)).length;
     if(matched >= 3){ headerIdx = i; headers = cells; break; }
   }
-  if(headerIdx < 0) throw new Error('PDF tidak dikenali. Konversi ke Excel dulu.');
+  if(headerIdx < 0) throw new Error('PDF tidak dikenali.');
   const rows = [];
   for(let i = headerIdx + 1; i < lines.length; i++){
     const cells = lines[i].split(/\s*\|\s*|\t|  +/).filter(Boolean);
@@ -938,7 +941,7 @@ async function parsePDF(file){
     const nr = normalizeRow(obj);
     if(nr.nama || nr.no_rekening) rows.push(nr);
   }
-  if(!rows.length) throw new Error('PDF terbaca tapi tidak ada baris data yang cocok.');
+  if(!rows.length) throw new Error('PDF terbaca tapi tidak ada baris data.');
   return rows;
 }
 async function parseAnyFile(file){
@@ -950,7 +953,7 @@ async function parseAnyFile(file){
       const text = await file.text();
       if(isExcelXml(text)){
         const rows = parseTunggakanXlsXml(text);
-        if(!rows.length) throw new Error('XML SpreadsheetML terdeteksi tapi tidak ada data.');
+        if(!rows.length) throw new Error('XML SpreadsheetML kosong.');
         return rows;
       }
       if(ext === 'csv' || ext === 'txt') return parseCSVText(text);
@@ -959,21 +962,21 @@ async function parseAnyFile(file){
     }
     return await parseExcel(file);
   }
-  throw new Error('Format tidak didukung. Gunakan .xlsx/.xls/.csv/.xml/.pdf');
+  throw new Error('Format tidak didukung.');
 }
 
-function saveUploaded(rows, filename){
-  const payload = { uploadedAt: Date.now(), filename, count: rows.length, rows };
+function saveUploaded(rows, filename, sourceUrl){
+  const payload = { uploadedAt: Date.now(), filename, count: rows.length, rows, sourceUrl: sourceUrl || '' };
   try {
     localStorage.setItem(UPLOAD_KEY, JSON.stringify(payload));
     DB.uploaded = payload;
   } catch(e){
     const slim = rows.map(r => { const c = Object.assign({}, r); delete c.hasil; return c; });
     try {
-      localStorage.setItem(UPLOAD_KEY, JSON.stringify({ uploadedAt: Date.now(), filename, count: rows.length, rows: slim }));
-      DB.uploaded = { uploadedAt: Date.now(), filename, count: rows.length, rows: slim };
+      localStorage.setItem(UPLOAD_KEY, JSON.stringify({ uploadedAt: Date.now(), filename, count: rows.length, rows: slim, sourceUrl: sourceUrl || '' }));
+      DB.uploaded = { uploadedAt: Date.now(), filename, count: rows.length, rows: slim, sourceUrl: sourceUrl || '' };
     } catch(e2){
-      throw new Error('Penyimpanan HP penuh. Hapus upload sebelumnya.');
+      throw new Error('Penyimpanan HP penuh.');
     }
   }
 }
@@ -991,12 +994,147 @@ function getEffectiveMaster(){
 }
 function masterSourceLabel(){
   if(DB.uploaded && DB.uploaded.rows && DB.uploaded.rows.length){
-    return 'Upload: ' + DB.uploaded.filename + ' (' + DB.uploaded.count + ' baris)';
+    if(DB.uploaded.sourceUrl) return '🌐 URL (' + DB.uploaded.count + ' baris)';
+    return '📎 ' + DB.uploaded.filename + ' (' + DB.uploaded.count + ' baris)';
   }
   return 'Google Sheets';
 }
 
-/* ------------------------- 6. REBUILD ------------------------- */
+/* ------------------------- 6. MODUL URL ------------------------- */
+const URL_CFG_KEY = 'tanyakopena_url_cfg_v1';
+const URL_CACHE_KEY = 'tanyakopena_url_cache_v1';
+
+function loadUrlCfg(){
+  try { return Object.assign({ masterUrl: '', intervalMin: 30 }, JSON.parse(localStorage.getItem(URL_CFG_KEY) || '{}')); }
+  catch(e){ return { masterUrl: '', intervalMin: 30 }; }
+}
+function saveUrlCfg(cfg){ localStorage.setItem(URL_CFG_KEY, JSON.stringify(cfg)); }
+
+async function fetchHtml(url){
+  try {
+    const res = await fetch(url, { cache: 'no-store', mode: 'cors' });
+    if(res.ok){
+      const text = await res.text();
+      if(text && text.length > 500) return { text, via: 'direct' };
+    }
+  } catch(e){ console.log('Direct gagal:', e.message); }
+
+  try {
+    const proxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+    const res = await fetch(proxy, { cache: 'no-store' });
+    if(res.ok){
+      const text = await res.text();
+      if(text && text.length > 500) return { text, via: 'allorigins' };
+    }
+  } catch(e){ console.log('allorigins gagal:', e.message); }
+
+  try {
+    const proxy = 'https://corsproxy.io/?' + encodeURIComponent(url);
+    const res = await fetch(proxy, { cache: 'no-store' });
+    if(res.ok){
+      const text = await res.text();
+      if(text && text.length > 500) return { text, via: 'corsproxy' };
+    }
+  } catch(e){ console.log('corsproxy gagal:', e.message); }
+
+  throw new Error('Semua cara gagal. Cek koneksi atau URL.');
+}
+
+function extractMasterFromHtml(html){
+  // Pola 1: <script id="data-json">
+  let m = html.match(/<script[^>]*id=["']data-json["'][^>]*>([\s\S]*?)<\/script>/i);
+  if(m && m[1]){
+    try { return JSON.parse(m[1].trim()); } catch(e){ console.warn('Parse data-json gagal', e); }
+  }
+
+  // Pola 2: <script type="application/json">
+  m = html.match(/<script[^>]*type=["']application\/json["'][^>]*>([\s\S]*?)<\/script>/i);
+  if(m && m[1]){
+    const t = m[1].trim();
+    if(t.startsWith('[') || t.startsWith('{')){
+      try { return JSON.parse(t); } catch(e){}
+    }
+  }
+
+  // Pola 3: var DATA = [...] / const DEFAULT_DATA = [...]
+  m = html.match(/(?:var|let|const)\s+(?:DATA|DEFAULT_DATA)\s*=\s*(\[[\s\S]*?\]);/);
+  if(m && m[1]){
+    try { return JSON.parse(m[1]); } catch(e){}
+  }
+
+  // Pola 4: cari JSON array dengan field "nama"
+  const scripts = html.match(/<script[^>]*>([\s\S]*?)<\/script>/gi) || [];
+  for(const s of scripts){
+    const jsonMatch = s.match(/(\[\s*\{\s*"nama"[\s\S]*?\}\s*\])/);
+    if(jsonMatch){
+      try {
+        const arr = JSON.parse(jsonMatch[1]);
+        if(Array.isArray(arr) && arr.length && arr[0].nama) return arr;
+      } catch(e){}
+    }
+  }
+
+  throw new Error('Tidak menemukan data JSON di HTML. Pastikan data ter-embed di halaman.');
+}
+
+async function fetchMasterFromUrl(url, silent){
+  const statusEl = document.getElementById('urlStatus');
+  if(!silent && statusEl){
+    statusEl.className = 'url-status loading';
+    statusEl.textContent = '⏳ Mengambil dari ' + url + '...';
+    statusEl.style.display = '';
+  }
+  try {
+    const { text, via } = await fetchHtml(url);
+    const rows = extractMasterFromHtml(text);
+    if(!Array.isArray(rows) || !rows.length) throw new Error('Data kosong atau format tidak dikenali.');
+    saveUploaded(rows, '🌐 ' + new URL(url).hostname, url);
+    localStorage.setItem(URL_CACHE_KEY, JSON.stringify({ url, ts: Date.now(), count: rows.length }));
+    rebuild();
+    if(!silent && statusEl){
+      statusEl.className = 'url-status ok';
+      statusEl.textContent = '✅ Berhasil ambil ' + rows.length + ' baris (' + (via === 'direct' ? 'server langsung' : 'via proxy ' + via) + ')';
+    }
+    if(!silent){
+      addAiMsg('<div class="ok-box">🌐 Data master berhasil diambil dari URL.<br><b>' + rows.length + ' baris</b> · sumber: <code>' + esc(url) + '</code></div>');
+    }
+    return rows;
+  } catch(err){
+    if(!silent && statusEl){
+      statusEl.className = 'url-status err';
+      statusEl.textContent = '❌ ' + err.message;
+    }
+    throw err;
+  }
+}
+
+let urlRefreshTimer = null;
+function scheduleUrlRefresh(){
+  if(urlRefreshTimer) clearInterval(urlRefreshTimer);
+  const cfg = loadUrlCfg();
+  if(!cfg.masterUrl || !cfg.intervalMin) return;
+  urlRefreshTimer = setInterval(async () => {
+    try {
+      await fetchMasterFromUrl(cfg.masterUrl, true);
+      console.log('Auto-refresh URL berhasil');
+    } catch(e){
+      console.warn('Auto-refresh URL gagal', e.message);
+    }
+  }, cfg.intervalMin * 60 * 1000);
+}
+function tryAutoLoadFromUrl(){
+  const cfg = loadUrlCfg();
+  if(!cfg.masterUrl) return;
+  const cache = JSON.parse(localStorage.getItem(URL_CACHE_KEY) || 'null');
+  const maxAge = (cfg.intervalMin || 30) * 60 * 1000;
+  if(!cache || (Date.now() - cache.ts) > maxAge){
+    console.log('Cache expired, refresh dari URL...');
+    fetchMasterFromUrl(cfg.masterUrl, true).catch(() => {});
+  }
+  scheduleUrlRefresh();
+}
+
+/* ------------------------- 7. REBUILD ------------------------- */
 function isSameNama(a, b){
   const na = normNama(a), nb = normNama(b);
   if(!na || !nb) return false;
@@ -1066,6 +1204,7 @@ function rebuild(){
     const nama = String(m.nama || m['Nama Anggota'] || m['Nama'] || '').trim();
     if(!norek && !nama) return;
     const p = getOrCreate(norek, nama);
+    // Multi-rekening: kalau sudah punya master, pilih yang nomor pinjamannya lebih besar
     if(p.master){
       const oldRek = cleanRek(p.master.no_rekening || '');
       const newRek = cleanRek(norek);
@@ -1169,14 +1308,15 @@ function updateSourceStatus(){
   parts.push(DB.ready.bk ? '🟢 Buku Kunjungan' : '🔴 Buku Kunjungan');
   parts.push(DB.ready.mk ? '🟢 Laporan Marketing' : '🔴 Laporan Marketing');
   if(DB.uploaded && DB.uploaded.rows){
-    parts.push('📎 ' + DB.uploaded.filename + ' (' + DB.uploaded.count + ')');
+    if(DB.uploaded.sourceUrl) parts.push('🌐 URL (' + DB.uploaded.count + ')');
+    else parts.push('📎 ' + DB.uploaded.filename + ' (' + DB.uploaded.count + ')');
   } else {
     parts.push(DB.ready.sheet ? '🟢 Data Nasabah' : '🔴 Data Nasabah');
   }
-  $('#srcStatus').textContent = parts.join(' · ') + ' · ' + PROFILES.length + ' nasabah';
+  $('#srcStatus').textContent = parts.join(' · ') + ' · ' + PROFILES.length + ' profil';
 }
 
-/* ------------------------- 7. PENCARIAN ------------------------- */
+/* ------------------------- 8. PENCARIAN ------------------------- */
 function scoreMatch(q, target){
   if(!q || !target) return 0;
   const a = norm(q), b = norm(target);
@@ -1225,7 +1365,7 @@ function searchProfiles(query, limit){
   return scored.slice(0, limit || 8).map(x => x.p);
 }
 
-/* ------------------------- 8. EKSTRAKSI ------------------------- */
+/* ------------------------- 9. EKSTRAKSI ------------------------- */
 const STOPWORDS = new Set([
   'cari','carikan','data','info','informasi','nasabah','anggota','debitur','riwayat','kunjungan',
   'histori','history','siapa','apa','apakah','bagaimana','gimana','di','ke','dari','untuk','yang',
@@ -1292,11 +1432,10 @@ function extractDateRange(text){
   return null;
 }
 
-/* ------------------------- 9. INTENT ------------------------- */
+/* ------------------------- 10. INTENT ------------------------- */
 function detectIntent(text){
   const t = ' ' + String(text).toLowerCase().replace(/[^\w\s\/:\-]/g, ' ').replace(/\s+/g, ' ') + ' ';
   const has = (...ws) => ws.some(w => t.includes(w));
-
   if(/(total|jumlah|berapa|ada)\s+(nasabah|anggota|orang)/.test(t) || /(berapa|jumlah)\s+banyak\s+(nasabah|anggota)/.test(t)) return 'total_nasabah';
   if(has('bantuan','help','panduan','bisa apa','cara pakai','menu','contoh pertanyaan','fitur')) return 'bantuan';
   if(has('analisa','analisis','kondisi kita','menurutmu','rekomendasi aksi','prediksi','perkiraan','potensi','risiko keseluruhan')) return 'analisa';
@@ -1312,7 +1451,7 @@ function detectIntent(text){
   return 'cari';
 }
 
-/* ------------------------- 10. KARTU & KOMPONEN ------------------------- */
+/* ------------------------- 11. KOMPONEN ------------------------- */
 function badge(text, cls){ return '<span class="badge ' + (cls||'') + '">' + esc(text) + '</span>'; }
 
 function renderFotoStrip(fotos, big){
@@ -1330,7 +1469,6 @@ function renderFotoStrip(fotos, big){
     'onclick="event.stopPropagation();openLightbox(' + i + ',\'' + enc + '\')" alt="Foto">'
   ).join('') + '</div>';
 }
-
 let lbFotos = [], lbIdx = 0;
 function openLightbox(idx, encodedArr){
   try { lbFotos = JSON.parse(decodeURIComponent(encodedArr)); } catch(e){ lbFotos = []; }
@@ -1361,7 +1499,6 @@ function renderLightbox(){
         '<div class="lb-info">Foto ' + (lbIdx + 1) + ' dari ' + lbFotos.length + '</div>'
       : '');
 }
-
 function statusBadgeCls(s){
   if(s === 'Sudah Bayar') return 'green';
   if(s === 'Janji Bayar') return 'amber';
@@ -1381,7 +1518,6 @@ function allTimeline(p){
   rows.sort((a,b) => (b.tanggal||'').localeCompare(a.tanggal||''));
   return rows;
 }
-
 function profileSummaryCard(p){
   const m = p.master || {};
   const os = num(m.saldo);
@@ -1407,7 +1543,6 @@ function profileSummaryCard(p){
       (lastDate ? '<div class="rc-line" style="margin-top:6px">Terakhir dikunjungi: ' + fmtTgl(lastDate) + '</div>' : '') +
     '</div>';
 }
-
 function fullProfileHtml(p){
   const m = p.master || {};
   const os = num(m.saldo);
@@ -1415,7 +1550,6 @@ function fullProfileHtml(p){
   const angs = num(m.angsuran_bulanan);
   const coll = (m.coll !== undefined && m.coll !== null && m.coll !== '') ? num(m.coll) : null;
   const visits = p.visits.length + p.reports.length;
-
   let html = '<h3>' + esc(p.nama) + '</h3>';
   html += '<div class="dim nums">' + esc(p.reks.join(' · ') || 'nomor rekening belum tercatat') + '</div>';
   html += '<hr>';
@@ -1423,7 +1557,7 @@ function fullProfileHtml(p){
   html += '<dt>AO</dt><dd>' + esc(p.ao || '-') + '</dd>';
   if(p.norek) html += '<dt>Rek. Sukarela (211)</dt><dd class="nums">' + esc(p.norek) + '</dd>';
   if(p.pinjamanAktif && p.pinjamanAktif !== p.norek) html += '<dt>Pinjaman Aktif</dt><dd class="nums">' + esc(p.pinjamanAktif) + '</dd>';
-  if(p.reks.length > 1) html += '<dt>Semua Rekening</dt><dd class="nums" style="font-size:11.5px">' + esc(p.reks.join(' · ')) + '</dd>';
+  if(p.reks.length > 1) html += '<dt>Semua Rekening (' + p.reks.length + ')</dt><dd class="nums" style="font-size:11.5px">' + esc(p.reks.join(' · ')) + '</dd>';
   if(p.alamat) html += '<dt>Alamat</dt><dd>' + esc(p.alamat) + '</dd>';
   if(m.produk) html += '<dt>Produk</dt><dd>' + esc(m.produk) + '</dd>';
   if(plafon) html += '<dt>Plafon</dt><dd class="nums">' + fmtRpFull(plafon) + '</dd>';
@@ -1433,16 +1567,15 @@ function fullProfileHtml(p){
   if(m.tgl_jatuh_tempo) html += '<dt>Jatuh tempo</dt><dd>' + esc(m.tgl_jatuh_tempo) + '</dd>';
   html += '<dt>Dikunjungi</dt><dd>' + visits + ' kali</dd>';
   html += '</dl>';
-
   const tl = allTimeline(p).slice(0, 6);
   if(tl.length){
-    html += '<hr><div class="dim" style="margin-bottom:6px"><b>Kunjungan terakhir (paling baru di atas)</b></div>';
+    html += '<hr><div class="dim" style="margin-bottom:6px"><b>Kunjungan terakhir</b></div>';
     html += '<div class="tl">';
     tl.forEach(v => {
       html += '<div class="tl-item">' +
         '<div class="tl-date">' + esc(fmtTgl(v.tanggal)) +
           (v.status ? ' · <span style="color:' + (v.status === 'Sudah Bayar' ? '#1f7a45' : v.status === 'Janji Bayar' ? '#b5842a' : '#c0392b') + '">' + esc(v.status) + '</span>' : '') +
-          (v.sumber === 'buku' ? ' · 📖 Buku Kunjungan' : ' · 📋 Laporan Marketing') +
+          (v.sumber === 'buku' ? ' · 📖' : ' · 📋') +
         '</div>' +
         '<div class="tl-text">' + esc(v.hasil || '(tanpa catatan)') + '</div>' +
         (v.ao ? '<div class="tl-meta">AO: ' + esc(v.ao) + '</div>' : '') +
@@ -1452,9 +1585,8 @@ function fullProfileHtml(p){
     });
     html += '</div>';
   } else {
-    html += '<hr><div class="dim">Belum ada catatan kunjungan. Mungkin perlu dikunjungi?</div>';
+    html += '<hr><div class="dim">Belum ada catatan kunjungan.</div>';
   }
-
   const wa = waLink(p.wa || (m.no_hp || m['No HP'] || ''), p.nama);
   const mp = mapsUrl(p.alamat);
   html += '<div class="mini-actions">';
@@ -1465,7 +1597,7 @@ function fullProfileHtml(p){
   return html;
 }
 
-/* ============ MODUL: ATURAN, CONTOH, KOREKSI, ANALISIS ============ */
+/* ------------------------- 12. MODUL RULES/CORRECTIONS/ANALYSIS ------------------------- */
 const RULES_KEY = 'tanyakopena_rules_v1';
 const EXAMPLES_KEY = 'tanyakopena_examples_v1';
 const CORRECTIONS_KEY = 'tanyakopena_corrections_v1';
@@ -1482,7 +1614,7 @@ const DEFAULT_RULES =
 
 const DEFAULT_EXAMPLES =
   'Q: Bu Sri udah bayar belum?\n' +
-  'A: Bu Sri (rek 541052001586) belum ada catatan bayar bulan ini. Angsuran wajibnya Rp 9.479.167. Terakhir janji bayar 3 Okt, tapi belum ada laporan setoran.\n\n' +
+  'A: Bu Sri (rek 541052001586) belum ada catatan bayar bulan ini. Angsuran wajibnya Rp 9.479.167.\n\n' +
   'Q: Siapa aja yang coll 3?\n' +
   'A: Ada 19 nasabah coll 3, total outstandingnya Rp 850 jt. Yang terbesar: Ahmad (Rp 200 jt), Surip (Rp 140 jt), Wati (Rp 90 jt).';
 
@@ -1544,9 +1676,7 @@ function riskScore(p){
   }
   return Math.min(100, score);
 }
-
 function computeAnalytics(){
-  const cfg = loadAnalysisCfg();
   const data = {};
   const collDist = { 0:0, 1:0, 2:0, 3:0, 4:0, null:0 };
   PROFILES.forEach(p => {
@@ -1587,18 +1717,18 @@ function computeAnalytics(){
   data.multiPinjaman = PROFILES.filter(p => p.reks.filter(isPinjaman).length > 1).slice(0, 15);
   return data;
 }
-
 function buildAnalyticsContext(){
   const a = computeAnalytics();
   const parts = [];
   parts.push('\n== DATA ANALISIS ==');
-  parts.push('Total nasabah: ' + PROFILES.length);
+  parts.push('Total profil: ' + PROFILES.length);
+  parts.push('Total baris master: ' + getEffectiveMaster().length);
   parts.push('Sudah dikunjungi: ' + a.sudahKunjung + ' (' + Math.round(a.sudahKunjung/Math.max(1,PROFILES.length)*100) + '%)');
   parts.push('Total kunjungan: ' + a.totalKunjungan);
   parts.push('Total outstanding: ' + fmtRpFull(a.totalOS));
   parts.push('Distribusi Coll — 0: ' + a.collDist[0] + ' | 1: ' + a.collDist[1] + ' | 2: ' + a.collDist[2] + ' | 3: ' + a.collDist[3] + ' | 4: ' + a.collDist[4] + ' | tanpa data: ' + a.collDist.null);
   if(a.risky.length){
-    parts.push('\nTOP 15 NASABAH RISIKO TINGGI:');
+    parts.push('\nTOP 15 NASABAH RISIKO:');
     a.risky.slice(0, 15).forEach(x => {
       const p = x.p;
       const m = p.master || {};
@@ -1616,7 +1746,7 @@ function buildAnalyticsContext(){
     });
   }
   if(a.belum.length){
-    parts.push('\nBELUM PERNAH DIKUNJUNGI (' + a.belum.length + ') — top outstanding:');
+    parts.push('\nBELUM PERNAH DIKUNJUNGI (' + a.belum.length + '):');
     a.belum.slice().sort((x,y) => num(y.master.saldo) - num(x.master.saldo)).slice(0, 10).forEach(p => {
       parts.push('- ' + p.nama + ' | OS: ' + fmtRp(num(p.master.saldo)) + ' | Coll: ' + (p.master.coll ?? '-') + ' | AO: ' + (p.ao || '-'));
     });
@@ -1625,135 +1755,67 @@ function buildAnalyticsContext(){
   if(aoEntries.length){
     parts.push('\nKINERJA PER AO:');
     aoEntries.slice(0, 10).forEach(([ao, v]) => {
-      parts.push('- ' + ao + ': ' + v.total + ' kunjungan | ' + v.bayar + ' bayar | ' + v.janji + ' janji');
-    });
-  }
-  if(a.multiPinjaman.length){
-    parts.push('\nNASABAH DENGAN MULTI PINJAMAN:');
-    a.multiPinjaman.slice(0, 10).forEach(p => {
-      const pinj = p.reks.filter(isPinjaman);
-      parts.push('- ' + p.nama + ': ' + pinj.length + ' pinjaman | ' + pinj.join(', '));
+      parts.push('- ' + ao + ': ' + v.total + ' aksi | ' + v.bayar + ' bayar | ' + v.janji + ' janji');
     });
   }
   return parts.join('\n');
 }
 
-/* ============ FOTO SECTION — FIX UTAMA ============ */
-function buildPhotoSection(text){
-  const cand = extractNameCandidate(text);
-  const range = extractDateRange(text);
-  const wantsPhoto = /foto|photo|gambar|dokumentasi/i.test(text);
-  const namaOrang = cand && cand.length >= 3 ? searchProfiles(cand, 3) : [];
-
-  const photos = [];
-
-  // Kalau ada nama orang → fokus ke orang itu
-  if(namaOrang.length){
-    namaOrang.forEach(p => {
-      allTimeline(p).forEach(v => {
-        if(v.fotos && v.fotos.length){
-          photos.push({ p, v, fotos: v.fotos });
-        }
-      });
-    });
-  } else if(range){
-    // Filter by date range
-    PROFILES.forEach(p => {
-      allTimeline(p).forEach(v => {
-        if(!v.fotos || !v.fotos.length) return;
-        if(v.tanggal < range.from || v.tanggal > range.to) return;
-        photos.push({ p, v, fotos: v.fotos });
-      });
-    });
-  } else if(wantsPhoto){
-    // Ambil foto terbaru dari semua
-    PROFILES.forEach(p => {
-      allTimeline(p).forEach(v => {
-        if(v.fotos && v.fotos.length) photos.push({ p, v, fotos: v.fotos });
-      });
-    });
-  } else {
-    return ''; // Tidak minta foto & tidak ada nama → skip
-  }
-
-  if(!photos.length) return '';
-
-  photos.sort((a,b) => (b.v.tanggal||'').localeCompare(a.v.tanggal||''));
-
-  let html = '<hr><div class="dim" style="margin-bottom:8px"><b>📷 Foto Kunjungan (' + photos.length + ' kunjungan memiliki foto)</b></div>';
-  photos.slice(0, 12).forEach(x => {
-    html += '<div class="photo-block">' +
-      '<div class="pb-head">' +
-        '<b>' + esc(x.p.nama) + '</b> · ' + esc(fmtTgl(x.v.tanggal)) +
-        (x.v.ao ? ' · AO: ' + esc(x.v.ao) : '') +
-        (x.v.hasil ? '<br>' + esc(x.v.hasil.slice(0, 120)) + (x.v.hasil.length > 120 ? '…' : '') : '') +
-      '</div>' +
-      renderFotoStrip(x.fotos, true) +
-    '</div>';
-  });
-  if(photos.length > 12) html += '<div class="dim">...dan ' + (photos.length - 12) + ' kunjungan lain dengan foto.</div>';
-  return html;
-}
-
-/* ============ HANDLER ============ */
+/* ------------------------- 13. HANDLER ------------------------- */
 function answerBantuan(){
   return '<h3>Halo! Aku Tanya KOPENA 👋</h3>' +
-    '<p>Aku bisa nyariin data dari 3 aplikasi kamu sekaligus:</p>' +
+    '<p>Aku bisa nyariin data dari 3 aplikasi kamu:</p>' +
     '<ul>' +
       '<li><b>Cari Ahmad Rizki</b> — profil lengkapnya</li>' +
       '<li><b>Riwayat kunjungan Ahmad Rizki</b></li>' +
       '<li><b>Atas nama Ahmad Rizki apakah sudah angsuran?</b></li>' +
-      '<li><b>Foto kunjungan Ahmad Rizki</b> — aku tampilkan langsung</li>' +
+      '<li><b>Foto kunjungan Ahmad Rizki</b> — langsung tampil</li>' +
       '<li><b>Siapa aja yang sudah angsuran hari ini?</b></li>' +
       '<li><b>Siapa yang belum dikunjungi?</b></li>' +
       '<li><b>Ada yang janji bayar?</b></li>' +
       '<li><b>Analisa kondisi data kita</b></li>' +
-      '<li><b>Rekap AO Dimas</b></li>' +
     '</ul>' +
-    '<div class="dim">📎 <b>Tips:</b> upload file Excel/CSV/XML/PDF langsung di tombol kiri untuk ganti data.</div>';
+    '<div class="dim">📎 Upload file · 🌐 Atau ambil dari URL di ⚙ Pengaturan</div>';
 }
-
 function answerTotalNasabah(){
   const totalMaster = getEffectiveMaster().length;
   const sumber = masterSourceLabel();
   let html = '<h3>Total nasabah KOPENA Limpung</h3><hr>';
   html += '<dl class="kv">';
-  html += '<dt>Total resmi</dt><dd class="nums"><b>' + totalMaster.toLocaleString('id-ID') + '</b> nasabah</dd>';
+  html += '<dt>Total rekening</dt><dd class="nums"><b>' + totalMaster.toLocaleString('id-ID') + '</b></dd>';
+  html += '<dt>Total orang (setelah merge)</dt><dd class="nums">' + PROFILES.length + '</dd>';
   html += '</dl>';
-  html += '<div class="dim">Angka diambil dari <b>' + esc(sumber) + '</b>.</div>';
-  html += '<div class="dim" style="margin-top:8px">Profil gabungan (termasuk nasabah lama di Firebase): ' + PROFILES.length + '</div>';
+  html += '<div class="dim">Angka "rekening" diambil dari <b>' + esc(sumber) + '</b> — konsisten dengan aplikasi Data Nasabah.</div>';
   return html;
 }
-
 function answerCari(text){
   const cand = extractNameCandidate(text);
-  if(!cand) return '<p>Kamu mau nyari apa nih? Tulis nama nasabah, nomor rekening, atau alamatnya.</p>' + answerBantuan();
+  if(!cand) return '<p>Kamu mau nyari apa nih?</p>' + answerBantuan();
   const found = searchProfiles(cand, 8);
   if(!found.length){
     const alt = searchProfiles(text, 6);
     if(!alt.length){
       return '<p>Waduh, aku nggak nemu nasabah dengan nama <b>' + esc(cand) + '</b> 🤔</p>' +
-        '<div class="dim">Coba tulis sebagian namanya (misal: <code>Rizki</code>), atau nomor rekeningnya.</div>';
+        '<div class="dim">Coba tulis sebagian namanya (misal: <code>Rizki</code>).</div>';
     }
-    return renderListResult(alt, 'Nih hasil pencarian "' + cand + '"');
+    return renderListResult(alt, 'Hasil pencarian "' + cand + '"');
   }
   if(found.length === 1) return fullProfileHtml(found[0]);
   return renderListResult(found, 'Ketemu ' + found.length + ' nasabah untuk "' + cand + '"');
 }
 function renderListResult(list, title){
   let html = '<h3>' + esc(title) + '</h3>';
-  if(list.length > 12) html += '<div class="dim">Aku tampilin 12 dulu, total ' + list.length + '.</div>';
+  if(list.length > 12) html += '<div class="dim">Ditampilkan 12 dulu, total ' + list.length + '.</div>';
   list.slice(0, 12).forEach(p => { html += profileSummaryCard(p); });
   return html;
 }
-
 function answerRiwayat(text){
   const cand = extractNameCandidate(text);
   const found = cand ? searchProfiles(cand, 3) : [];
   if(!found.length){
     const r = extractDateRange(text);
     if(r) return answerPeriode(r);
-    return '<p>Sebutin nama nasabahnya dulu ya. Contoh: <code>riwayat kunjungan Ahmad Rizki</code></p>';
+    return '<p>Sebutin nama nasabahnya dulu ya.</p>';
   }
   return answerRiwayatOrang(found[0]);
 }
@@ -1762,7 +1824,7 @@ function answerRiwayatOrang(p){
   let html = '<h3>Riwayat kunjungan — ' + esc(p.nama) + '</h3>';
   html += '<div class="dim nums">' + esc(p.reks.join(' · ')) + ' · AO: ' + esc(p.ao || '-') + '</div>';
   if(!tl.length){
-    html += '<hr><div class="err-box">Belum ada catatan kunjungan nih.</div>';
+    html += '<hr><div class="err-box">Belum ada catatan kunjungan.</div>';
   } else {
     html += '<hr><div class="dim" style="margin-bottom:6px">Total ' + tl.length + '× dikunjungi:</div><div class="tl">';
     tl.forEach(v => {
@@ -1782,7 +1844,6 @@ function answerRiwayatOrang(p){
   html += '<div class="mini-actions"><button data-open="' + esc(p.key) + '">📄 Buka profil lengkapnya</button></div>';
   return html;
 }
-
 function answerFoto(text){
   const cand = extractNameCandidate(text);
   if(cand && cand.length >= 3){
@@ -1790,29 +1851,56 @@ function answerFoto(text){
     if(found.length){
       const p = found[0];
       const tl = allTimeline(p).filter(v => v.fotos && v.fotos.length);
-      if(!tl.length){
-        return '<h3>📷 Foto — ' + esc(p.nama) + '</h3>' +
-          '<hr><div class="empty-note">Belum ada foto kunjungan untuk nasabah ini. Kunjungan mungkin dicatat tanpa foto.</div>';
-      }
+      if(!tl.length) return '<h3>📷 Foto — ' + esc(p.nama) + '</h3><hr><div class="empty-note">Belum ada foto kunjungan.</div>';
       let html = '<h3>📷 Foto Kunjungan — ' + esc(p.nama) + '</h3>';
-      html += '<div class="dim">Ada ' + tl.length + ' kunjungan dengan foto.</div><hr>';
+      html += '<div class="dim">' + tl.length + ' kunjungan dengan foto.</div><hr>';
       tl.forEach(v => {
-        html += '<div class="photo-block">' +
-          '<div class="pb-head"><b>' + esc(fmtTgl(v.tanggal)) + '</b>' +
-            (v.ao ? ' · AO: ' + esc(v.ao) : '') +
-            (v.status ? ' · ' + esc(v.status) : '') +
-            (v.hasil ? '<br>' + esc(v.hasil) : '') +
-          '</div>' +
-          renderFotoStrip(v.fotos, true) +
-        '</div>';
+        html += '<div class="photo-block"><div class="pb-head"><b>' + esc(fmtTgl(v.tanggal)) + '</b>' +
+          (v.ao ? ' · AO: ' + esc(v.ao) : '') + (v.status ? ' · ' + esc(v.status) : '') +
+          (v.hasil ? '<br>' + esc(v.hasil) : '') + '</div>' +
+          renderFotoStrip(v.fotos, true) + '</div>';
       });
       return html;
     }
   }
-  const html = '<h3>📷 Foto Kunjungan Terbaru</h3>';
-  return html + buildPhotoSection(text || 'foto');
+  return '<h3>📷 Foto Kunjungan Terbaru</h3>' + buildPhotoSection(text || 'foto');
 }
-
+function buildPhotoSection(text){
+  const cand = extractNameCandidate(text);
+  const range = extractDateRange(text);
+  const wantsPhoto = /foto|photo|gambar|dokumentasi/i.test(text);
+  const namaOrang = cand && cand.length >= 3 ? searchProfiles(cand, 3) : [];
+  const photos = [];
+  if(namaOrang.length){
+    namaOrang.forEach(p => {
+      allTimeline(p).forEach(v => { if(v.fotos && v.fotos.length) photos.push({ p, v, fotos: v.fotos }); });
+    });
+  } else if(range){
+    PROFILES.forEach(p => {
+      allTimeline(p).forEach(v => {
+        if(!v.fotos || !v.fotos.length) return;
+        if(v.tanggal < range.from || v.tanggal > range.to) return;
+        photos.push({ p, v, fotos: v.fotos });
+      });
+    });
+  } else if(wantsPhoto){
+    PROFILES.forEach(p => {
+      allTimeline(p).forEach(v => { if(v.fotos && v.fotos.length) photos.push({ p, v, fotos: v.fotos }); });
+    });
+  } else return '';
+  if(!photos.length) return '';
+  photos.sort((a,b) => (b.v.tanggal||'').localeCompare(a.v.tanggal||''));
+  let html = '<hr><div class="dim" style="margin-bottom:8px"><b>📷 Foto Kunjungan (' + photos.length + ')</b></div>';
+  photos.slice(0, 12).forEach(x => {
+    html += '<div class="photo-block">' +
+      '<div class="pb-head"><b>' + esc(x.p.nama) + '</b> · ' + esc(fmtTgl(x.v.tanggal)) +
+        (x.v.ao ? ' · AO: ' + esc(x.v.ao) : '') +
+        (x.v.hasil ? '<br>' + esc(x.v.hasil.slice(0, 120)) : '') + '</div>' +
+      renderFotoStrip(x.fotos, true) + '</div>';
+  });
+  if(photos.length > 12) html += '<div class="dim">...dan ' + (photos.length - 12) + ' lainnya.</div>';
+  return html;
+}
 function answerBelum(text){
   const ao = extractAO(text);
   const desa = extractDesa(text);
@@ -1827,11 +1915,11 @@ function answerBelum(text){
   let html = '<h3>Yang belum dikunjungi' + (ao ? ' (AO: ' + esc(ao) + ')' : '') + (desa ? ' — di ' + esc(desa) : '') + '</h3>';
   html += '<div class="dim">Ada <b>' + list.length + '</b> nasabah yang belum pernah dicatat kunjungannya.</div><hr>';
   if(!list.length){
-    html += '<div class="ok-box">🎉 Semua nasabah' + (ao ? ' yang dipegang ' + esc(ao) : '') + ' udah pernah dikunjungi.</div>';
+    html += '<div class="ok-box">🎉 Semua nasabah' + (ao ? ' yang dipegang ' + esc(ao) : '') + ' sudah pernah dikunjungi.</div>';
     return html;
   }
   list.slice(0, 15).forEach(p => { html += profileSummaryCard(p); });
-  if(list.length > 15) html += '<div class="dim" style="margin-top:8px">Masih ada ' + (list.length - 15) + ' lagi.</div>';
+  if(list.length > 15) html += '<div class="dim">Masih ada ' + (list.length - 15) + ' lagi.</div>';
   return html;
 }
 function answerBelumOrang(p){
@@ -1840,16 +1928,6 @@ function answerBelumOrang(p){
   html += '<div class="dim nums">' + esc(p.reks.join(' · ') || '—') + ' · AO: ' + esc(p.ao || '-') + '</div><hr>';
   if(total){
     html += '<div class="ok-box">Sudah ada <b>' + total + '× catatan kunjungan</b>.</div>';
-    const tl = allTimeline(p).slice(0, 3);
-    html += '<div class="tl">';
-    tl.forEach(v => {
-      html += '<div class="tl-item">' +
-        '<div class="tl-date">' + esc(fmtTgl(v.tanggal)) + (v.sumber === 'buku' ? ' · 📖' : ' · 📋') + '</div>' +
-        '<div class="tl-text">' + esc((v.hasil || '').slice(0, 140)) + '</div>' +
-        renderFotoStrip(v.fotos, false) +
-      '</div>';
-    });
-    html += '</div>';
   } else {
     html += '<div class="err-box">Belum ada catatan kunjungan sama sekali.</div>';
     if(num(p.master && p.master.saldo)){
@@ -1860,19 +1938,18 @@ function answerBelumOrang(p){
   html += '<div class="mini-actions"><button data-open="' + esc(p.key) + '">📄 Profil lengkap</button></div>';
   return html;
 }
-
 function answerJanji(text){
   const range = extractDateRange(text);
   const ao = extractAO(text);
   let list = DB.marketing.filter(r => r.status === 'Janji Bayar');
   if(ao) list = list.filter(r => r.ao === ao);
   if(range) list = list.filter(r => r.target && r.target >= range.from && r.target <= range.to);
-  list.sort((a,b) => (a.target || '9999').localeCompare(b.target || '9999') || (b.tanggal||'').localeCompare(a.tanggal||''));
+  list.sort((a,b) => (a.target || '9999').localeCompare(b.target || '9999'));
   const today = todayISO();
   let html = '<h3>Yang janji bayar' + (ao ? ' — AO ' + esc(ao) : '') + '</h3>';
-  html += '<div class="dim">Ada <b>' + list.length + '</b> catatan' + (range ? ' untuk ' + esc(range.label) : '') + '.</div><hr>';
+  html += '<div class="dim">Ada <b>' + list.length + '</b> catatan.</div><hr>';
   if(!list.length){
-    html += '<div class="empty-note">Belum ada yang janji bayar' + (ao ? ' dari AO ' + esc(ao) : '') + '. 😊</div>';
+    html += '<div class="empty-note">Belum ada yang janji bayar.</div>';
     return html;
   }
   list.slice(0, 15).forEach(r => {
@@ -1894,10 +1971,7 @@ function answerJanjiOrang(p){
   const today = todayISO();
   let html = '<h3>📝 Janji Bayar — ' + esc(p.nama) + '</h3>';
   html += '<div class="dim nums">' + esc(p.reks.join(' · ') || '—') + ' · AO: ' + esc(p.ao || '-') + '</div><hr>';
-  if(!janji.length){
-    html += '<div class="empty-note">Belum ada catatan janji bayar. 😊</div>';
-    return html;
-  }
+  if(!janji.length){ html += '<div class="empty-note">Belum ada catatan janji bayar.</div>'; return html; }
   const latest = janji[0];
   const due = latest.target && latest.target <= today;
   html += '<div class="' + (due ? 'err-box' : 'ok-box') + '">';
@@ -1919,7 +1993,6 @@ function answerJanjiOrang(p){
   html += '</div>';
   return html;
 }
-
 function answerAngsuran(text){
   const range = extractDateRange(text);
   const ao = extractAO(text);
@@ -1930,59 +2003,43 @@ function answerAngsuran(text){
   if(ao) dariLaporan = dariLaporan.filter(r => r.ao === ao);
   let dariMaster = PROFILES.filter(p => {
     if(!p.master) return false;
-    const pokok = num(p.master.pembayaran_pokok);
-    const margin = num(p.master.pembayaran_margin);
-    return pokok > 0 || margin > 0 || p.master.sudah_angsur === true;
+    return num(p.master.pembayaran_pokok) > 0 || p.master.sudah_angsur === true;
   });
   if(ao) dariMaster = dariMaster.filter(p => p.ao === ao);
   const periodLabel = range ? range.label : 'bulan ini';
   let html = '<h3>💵 Yang sudah angsuran' + (ao ? ' — AO ' + esc(ao) : '') + '</h3>';
   html += '<div class="dim">Periode: <b>' + esc(periodLabel) + '</b>'
     + (range ? ' (' + fmtTgl(range.from) + ' – ' + fmtTgl(range.to) + ')' : '') + '</div><hr>';
+  html += '<div class="metric-grid">';
+  html += '<div class="metric ok"><span class="lbl">Dari Laporan</span><span class="val">' + dariLaporan.length + '</span></div>';
+  html += '<div class="metric ok"><span class="lbl">Dari Master</span><span class="val">' + dariMaster.length + '</span></div>';
+  html += '</div>';
   if(dariLaporan.length){
-    html += '<div style="margin-bottom:6px"><b>📋 Dari Laporan Marketing (' + dariLaporan.length + ')</b></div>';
-    let total = 0;
-    dariLaporan.forEach(r => {
-      const rec = r.norek ? BY_REK.get(cleanRek(r.norek)) : null;
-      if(rec && rec.master) total += num(rec.master.angsuran_bulanan);
-    });
-    if(total > 0) html += '<div class="ok-box">💰 Total angsuran tercatat: <b>' + fmtRpFull(total) + '</b></div>';
-    dariLaporan.slice(0, 12).forEach(r => {
-      const rec = r.norek ? BY_REK.get(cleanRek(r.norek)) : null;
-      const m = rec ? rec.master || {} : {};
-      const nominal = num(m.angsuran_bulanan) || (num(m.pembayaran_pokok) + num(m.pembayaran_margin));
+    html += '<div style="margin-bottom:6px"><b>📋 Laporan Marketing (' + dariLaporan.length + ')</b></div>';
+    dariLaporan.slice(0, 10).forEach(r => {
       html += '<div class="res-card" data-nama="' + esc(r.debitur) + '">' +
         '<div class="rc-top"><div class="rc-name">' + esc(r.debitur) + '</div>' +
-        '<div class="rc-rek nums">' + (nominal ? fmtRp(nominal) : '') + '</div></div>' +
+        '<div class="rc-rek">' + esc(fmtTgl(r.tanggal)) + '</div></div>' +
         '<div class="rc-line">' + esc((r.hasil || '-').slice(0, 160)) + '</div>' +
-        '<div class="rc-badges">' + badge('✅ Sudah Bayar', 'green') + badge('Dicatat ' + fmtTgl(r.tanggal), 'grey') + badge(r.ao || '-', '') + '</div>' +
+        '<div class="rc-badges">' + badge('✅ Sudah Bayar', 'green') + badge(r.ao || '-', '') + '</div>' +
       '</div>';
     });
     html += '<hr>';
   }
   if(dariMaster.length){
-    html += '<div style="margin-bottom:6px"><b>📊 Dari Master Data (' + dariMaster.length + ')</b></div>';
-    dariMaster.sort((a,b) => num(b.master.pembayaran_pokok) - num(a.master.pembayaran_pokok));
+    html += '<div style="margin-bottom:6px"><b>📊 Master Data (' + dariMaster.length + ')</b></div>';
     const totalPokok = dariMaster.reduce((s,p) => s + num(p.master.pembayaran_pokok), 0);
-    const totalMargin = dariMaster.reduce((s,p) => s + num(p.master.pembayaran_margin), 0);
-    if(totalPokok || totalMargin){
-      html += '<div class="ok-box">💰 Total — Pokok: <b>' + fmtRpFull(totalPokok) + '</b> · Margin: <b>' + fmtRpFull(totalMargin) + '</b></div>';
-    }
-    dariMaster.slice(0, 12).forEach(p => {
-      const m = p.master;
+    if(totalPokok) html += '<div class="ok-box">💰 Total setoran pokok: <b>' + fmtRpFull(totalPokok) + '</b></div>';
+    dariMaster.slice(0, 10).forEach(p => {
       html += '<div class="res-card" data-nama="' + esc(p.nama) + '">' +
         '<div class="rc-top"><div class="rc-name">' + esc(p.nama) + '</div>' +
-        '<div class="rc-rek nums">' + fmtRp(num(m.pembayaran_pokok) + num(m.pembayaran_margin)) + '</div></div>' +
-        '<div class="rc-badges">' +
-          (num(m.pembayaran_pokok) ? badge('Pokok ' + fmtRp(m.pembayaran_pokok), 'green') : '') +
-          (num(m.pembayaran_margin) ? badge('Margin ' + fmtRp(m.pembayaran_margin), 'amber') : '') +
-          badge('Sisa OS ' + fmtRp(m.saldo), 'grey') + badge(p.ao || '-', '') +
-        '</div>' +
+        '<div class="rc-rek nums">' + fmtRp(p.master.pembayaran_pokok) + '</div></div>' +
+        '<div class="rc-badges">' + badge('Pokok ' + fmtRp(p.master.pembayaran_pokok), 'green') + badge(p.ao || '-', '') + '</div>' +
       '</div>';
     });
   }
   if(!dariLaporan.length && !dariMaster.length){
-    html += '<div class="empty-note">Belum ada catatan angsuran' + (isToday ? ' untuk hari ini' : '') + (ao ? ' dari AO ' + esc(ao) : '') + '.</div>';
+    html += '<div class="empty-note">Belum ada catatan angsuran' + (isToday ? ' untuk hari ini' : '') + '.</div>';
   }
   return html;
 }
@@ -1992,8 +2049,7 @@ function answerAngsuranOrang(p, text){
   const reports = p.reports.filter(r => r.status === 'Sudah Bayar');
   const reportsFiltered = range ? reports.filter(r => r.tanggal >= range.from && r.tanggal <= range.to) : reports;
   const pokok = num(m.pembayaran_pokok);
-  const margin = num(m.pembayaran_margin);
-  const sudahBayarBulanIni = pokok > 0 || margin > 0 || m.sudah_angsur === true;
+  const sudahBayarBulanIni = pokok > 0 || m.sudah_angsur === true;
   const angsuran = num(m.angsuran_bulanan);
   const periodLabel = range ? range.label : 'bulan ini';
   let html = '<h3>💵 Angsuran — ' + esc(p.nama) + '</h3>';
@@ -2001,34 +2057,20 @@ function answerAngsuranOrang(p, text){
   if(reportsFiltered.length > 0){
     html += '<div class="ok-box">✅ <b>SUDAH angsuran</b> ' + esc(periodLabel) + ' — ' + reportsFiltered.length + '× di Laporan Marketing.</div>';
   } else if(sudahBayarBulanIni){
-    html += '<div class="ok-box">✅ <b>SUDAH ada setoran</b> di master data bulan ini.</div>';
+    html += '<div class="ok-box">✅ <b>SUDAH ada setoran pokok</b> di master data bulan ini.</div>';
   } else {
     html += '<div class="err-box">⚠️ <b>BELUM ada catatan angsuran</b> ' + esc(periodLabel) +
       '.' + (angsuran ? ' Angsuran wajibnya ' + fmtRpFull(angsuran) + '/bulan.' : '') + '</div>';
   }
   html += '<dl class="kv">';
-  if(angsuran)          html += '<dt>Angsuran/bln</dt><dd class="nums">' + fmtRpFull(angsuran) + '</dd>';
-  if(num(m.saldo))      html += '<dt>Sisa OS</dt><dd class="nums">' + fmtRpFull(m.saldo) + '</dd>';
-  if(pokok)             html += '<dt>Setoran pokok</dt><dd class="nums">' + fmtRpFull(pokok) + '</dd>';
-  if(margin)            html += '<dt>Setoran margin</dt><dd class="nums">' + fmtRpFull(margin) + '</dd>';
+  if(angsuran) html += '<dt>Angsuran/bln</dt><dd class="nums">' + fmtRpFull(angsuran) + '</dd>';
+  if(num(m.saldo)) html += '<dt>Sisa OS</dt><dd class="nums">' + fmtRpFull(m.saldo) + '</dd>';
+  if(pokok) html += '<dt>Setoran pokok</dt><dd class="nums">' + fmtRpFull(pokok) + '</dd>';
   if(m.tgl_jatuh_tempo) html += '<dt>Jatuh tempo</dt><dd>' + esc(m.tgl_jatuh_tempo) + '</dd>';
   html += '</dl>';
-  if(reports.length){
-    html += '<hr><div class="dim" style="margin-bottom:6px"><b>Riwayat "Sudah Bayar":</b></div><div class="tl">';
-    reports.slice(0, 5).forEach(r => {
-      html += '<div class="tl-item">' +
-        '<div class="tl-date">' + esc(fmtTgl(r.tanggal)) + '</div>' +
-        '<div class="tl-text">' + esc(r.hasil || '(tanpa catatan)') + '</div>' +
-        (r.ao ? '<div class="tl-meta">AO: ' + esc(r.ao) + '</div>' : '') +
-        renderFotoStrip(r.fotos, false) +
-      '</div>';
-    });
-    html += '</div>';
-  }
   html += '<div class="mini-actions"><button data-open="' + esc(p.key) + '">📄 Profil lengkap</button></div>';
   return html;
 }
-
 function answerRekapAO(text){
   const range = extractDateRange(text) || { from: addDays(todayISO(), -29), to: todayISO(), label: '30 hari terakhir' };
   const map = {};
@@ -2053,8 +2095,8 @@ function answerRekapAO(text){
   });
   const rows = Object.entries(map).sort((a,b) => b[1].total - a[1].total);
   let html = '<h3>Rekap kunjungan per AO 📋</h3>';
-  html += '<div class="dim">Periode ' + esc(range.label) + ' (' + fmtTgl(range.from) + ' – ' + fmtTgl(range.to) + ')</div><hr>';
-  if(!rows.length){ html += '<div class="empty-note">Belum ada kunjungan di periode ini.</div>'; return html; }
+  html += '<div class="dim">Periode ' + esc(range.label) + '</div><hr>';
+  if(!rows.length){ html += '<div class="empty-note">Belum ada kunjungan.</div>'; return html; }
   html += '<dl class="kv">';
   rows.forEach(([ao, v]) => {
     let extra = [];
@@ -2067,7 +2109,6 @@ function answerRekapAO(text){
   html += '</dl>';
   return html;
 }
-
 function answerPeriode(range){
   const list = [];
   DB.marketing.forEach(r => {
@@ -2085,12 +2126,7 @@ function answerPeriode(range){
   list.sort((a,b) => (b.tanggal||'').localeCompare(a.tanggal||''));
   let html = '<h3>Kunjungan ' + esc(range.label) + '</h3>';
   html += '<div class="dim">' + fmtTgl(range.from) + ' – ' + fmtTgl(range.to) + ' · ' + list.length + ' catatan</div><hr>';
-  if(!list.length){ html += '<div class="empty-note">Belum ada catatan kunjungan di periode itu.</div>'; return html; }
-  const byStatus = {};
-  list.forEach(x => { byStatus[x.status || '-'] = (byStatus[x.status || '-'] || 0) + 1; });
-  html += '<div style="margin-bottom:10px">';
-  Object.entries(byStatus).sort((a,b) => b[1]-a[1]).forEach(([s,n]) => { html += badge(s + ': ' + n, statusBadgeCls(s)); });
-  html += '</div>';
+  if(!list.length){ html += '<div class="empty-note">Belum ada catatan.</div>'; return html; }
   list.slice(0, 20).forEach(x => {
     html += '<div class="res-card" data-nama="' + esc(x.nama) + '">' +
       '<div class="rc-top"><div class="rc-name">' + esc(x.nama) + '</div><div class="rc-rek">' + esc(fmtTgl(x.tanggal)) + '</div></div>' +
@@ -2100,7 +2136,6 @@ function answerPeriode(range){
   });
   return html;
 }
-
 function answerTunggakan(text){
   const ao = extractAO(text);
   let list = PROFILES.filter(p => p.master && num(p.master.saldo) > 0);
@@ -2108,7 +2143,7 @@ function answerTunggakan(text){
   list.sort((a,b) => num(b.master.saldo) - num(a.master.saldo));
   let html = '<h3>Outstanding terbesar' + (ao ? ' — AO ' + esc(ao) : '') + '</h3>';
   html += '<div class="dim">Ada <b>' + list.length + '</b> nasabah yang masih punya saldo.</div><hr>';
-  if(!list.length){ html += '<div class="empty-note">Data outstanding nggak kelihatan.</div>'; return html; }
+  if(!list.length){ html += '<div class="empty-note">Data outstanding nggak ada.</div>'; return html; }
   const total = list.reduce((s,p) => s + num(p.master.saldo), 0);
   html += '<div class="ok-box">💰 Total outstanding: <b>' + fmtRpFull(total) + '</b></div>';
   list.slice(0, 12).forEach(p => {
@@ -2119,13 +2154,12 @@ function answerTunggakan(text){
       '<div class="rc-badges">' +
         (coll !== null ? badge('Coll ' + coll, coll >= 3 ? 'red' : (coll === 0 ? 'green' : 'amber')) : '') +
         badge(p.ao || 'Tanpa AO', '') +
-        badge(p.visits.length + p.reports.length ? '✅ Udah dikunjungi' : '⚠️ Belum dikunjungi', p.visits.length + p.reports.length ? 'green' : 'red') +
+        badge(p.visits.length + p.reports.length ? '✅ Udah dikunjungi' : '⚠️ Belum', p.visits.length + p.reports.length ? 'green' : 'red') +
       '</div>' +
     '</div>';
   });
   return html;
 }
-
 function answerAlamat(text){
   const desa = extractDesa(text);
   const ao = extractAO(text);
@@ -2135,81 +2169,64 @@ function answerAlamat(text){
   if(ao) list = list.filter(p => p.ao === ao);
   let html = '<h3>Nasabah' + (desa ? ' di ' + esc(desa) : '') + (ao ? ' — AO ' + esc(ao) : '') + '</h3>';
   html += '<div class="dim">Ketemu <b>' + list.length + '</b> nasabah.</div><hr>';
-  if(!list.length){ html += '<div class="empty-note">Nggak ada yang cocok nih.</div>'; return html; }
+  if(!list.length){ html += '<div class="empty-note">Nggak ada yang cocok.</div>'; return html; }
   list.slice(0, 15).forEach(p => { html += profileSummaryCard(p); });
   return html;
 }
-
 function answerStatistik(){
-  const totalNasabah = getEffectiveMaster().length;
+  const totalMaster = getEffectiveMaster().length;
   const totalProfil = PROFILES.length;
   const totalOS = PROFILES.reduce((s,p) => s + (p.master ? num(p.master.saldo) : 0), 0);
-  const totalKunjunganBuku = PROFILES.reduce((s,p) => s + p.visits.length, 0);
-  const totalLaporan = DB.marketing.length;
   const sudah = PROFILES.filter(p => p.visits.length + p.reports.length > 0).length;
   const belum = PROFILES.filter(p => p.master && !p.visits.length && !p.reports.length).length;
-  const janji = DB.marketing.filter(r => r.status === 'Janji Bayar').length;
-  const bayar = DB.marketing.filter(r => r.status === 'Sudah Bayar').length;
   const today = todayISO();
   const kunjunganHariIni = DB.marketing.filter(r => r.tanggal === today).length +
     PROFILES.reduce((s,p) => s + p.visits.filter(v => v.tanggal === today).length, 0);
   let html = '<h3>Rangkuman data kita 📊</h3><hr>';
   html += '<dl class="kv">';
-  html += '<dt>Total nasabah (resmi)</dt><dd class="nums">' + totalNasabah.toLocaleString('id-ID') + '</dd>';
+  html += '<dt>Total rekening (resmi)</dt><dd class="nums">' + totalMaster.toLocaleString('id-ID') + '</dd>';
   html += '<dt>Sumber master</dt><dd style="font-size:11.5px">' + esc(masterSourceLabel()) + '</dd>';
-  html += '<dt>Profil gabungan</dt><dd class="nums">' + totalProfil + '</dd>';
+  html += '<dt>Total orang (merge)</dt><dd class="nums">' + totalProfil + '</dd>';
   html += '<dt>Total outstanding</dt><dd class="nums">' + fmtRpFull(totalOS) + '</dd>';
-  html += '<dt>Udah dikunjungi</dt><dd class="nums">' + sudah + '</dd>';
+  html += '<dt>Sudah dikunjungi</dt><dd class="nums">' + sudah + '</dd>';
   html += '<dt>Belum dikunjungi</dt><dd class="nums">' + belum + '</dd>';
   html += '<dt>Kunjungan hari ini</dt><dd class="nums">' + kunjunganHariIni + '</dd>';
-  html += '<dt>Catatan Buku Kunjungan</dt><dd class="nums">' + totalKunjunganBuku + '</dd>';
-  html += '<dt>Laporan Marketing</dt><dd class="nums">' + totalLaporan + '</dd>';
-  html += '<dt>Janji bayar aktif</dt><dd class="nums">' + janji + '</dd>';
-  html += '<dt>Berhasil ditagih</dt><dd class="nums">' + bayar + '</dd>';
   html += '<dt>Jumlah AO</dt><dd class="nums">' + AO_LIST.length + '</dd>';
   html += '</dl>';
-  html += '<hr><div class="dim"><b>Sumber data:</b><br>' +
+  html += '<hr><div class="dim"><b>Sumber:</b><br>' +
     (DB.ready.bk ? '✅' : '❌') + ' Buku Kunjungan · ' +
     (DB.ready.mk ? '✅' : '❌') + ' Laporan Marketing · ' +
-    (DB.uploaded ? '📎 ' + esc(DB.uploaded.filename) : ((DB.ready.sheet ? '✅' : '❌') + ' Google Sheets')) +
+    (DB.uploaded ? (DB.uploaded.sourceUrl ? '🌐 URL' : '📎 Upload') : ((DB.ready.sheet ? '✅' : '❌') + ' Sheets')) +
     '</div>';
   return html;
 }
-
 function answerAnalisa(){
   const a = computeAnalytics();
   let html = '<h3>📊 Analisis Data KOPENA</h3><hr>';
   html += '<div class="metric-grid">';
-  html += '<div class="metric"><span class="lbl">Total Nasabah</span><span class="val">' + PROFILES.length + '</span></div>';
+  html += '<div class="metric"><span class="lbl">Total Profil</span><span class="val">' + PROFILES.length + '</span></div>';
   html += '<div class="metric"><span class="lbl">Total Outstanding</span><span class="val">' + fmtRp(a.totalOS) + '</span></div>';
-  html += '<div class="metric ' + (a.collDist[3] + a.collDist[4] > 20 ? 'danger' : 'warn') + '"><span class="lbl">Coll 3 & 4</span><span class="val">' + (a.collDist[3] + a.collDist[4]) + '</span><span class="sub">nasabah bermasalah</span></div>';
-  html += '<div class="metric ' + (a.sudahKunjung / Math.max(1, PROFILES.length) > 0.7 ? 'ok' : 'warn') + '"><span class="lbl">Coverage Kunjungan</span><span class="val">' + Math.round(a.sudahKunjung / Math.max(1, PROFILES.length) * 100) + '%</span></div>';
+  html += '<div class="metric ' + (a.collDist[3] + a.collDist[4] > 20 ? 'danger' : 'warn') + '"><span class="lbl">Coll 3 & 4</span><span class="val">' + (a.collDist[3] + a.collDist[4]) + '</span></div>';
+  html += '<div class="metric ' + (a.sudahKunjung / Math.max(1, PROFILES.length) > 0.7 ? 'ok' : 'warn') + '"><span class="lbl">Coverage</span><span class="val">' + Math.round(a.sudahKunjung / Math.max(1, PROFILES.length) * 100) + '%</span></div>';
   html += '</div>';
   html += '<div class="insight-card"><div class="title">🎯 Prioritas Utama</div>';
   html += '<p>Ada <b>' + a.risky.length + '</b> nasabah dengan skor risiko tinggi (≥40). ';
   if(a.risky.length){
-    const top3 = a.risky.slice(0, 3);
-    html += 'Yang paling perlu diperhatikan: <b>' + top3.map(x => esc(x.p.nama)).join(', ') + '</b>.</p>';
-  } else {
-    html += 'Kondisi relatif aman.</p>';
-  }
+    html += 'Top 3: <b>' + a.risky.slice(0, 3).map(x => esc(x.p.nama)).join(', ') + '</b>.</p>';
+  } else html += 'Kondisi relatif aman.</p>';
   html += '</div>';
   if(a.janjiLewat.length){
-    html += '<div class="insight-card danger"><div class="title">⏰ Janji Bayar Lewat Target</div>';
-    html += '<p>Ada <b>' + a.janjiLewat.length + '</b> janji bayar yang sudah lewat tanggal. ';
-    html += 'Yang paling lama: <b>' + a.janjiLewat.slice(0, 3).map(r => esc(r.debitur) + ' (' + fmtTgl(r.target) + ')').join(', ') + '</b>.</p>';
-    html += '</div>';
+    html += '<div class="insight-card danger"><div class="title">⏰ Janji Bayar Lewat</div>';
+    html += '<p>Ada <b>' + a.janjiLewat.length + '</b> janji lewat target.</p></div>';
   }
   if(a.belum.length){
-    html += '<div class="insight-card warn"><div class="title">📍 Belum Pernah Dikunjungi</div>';
-    html += '<p><b>' + a.belum.length + '</b> nasabah belum pernah dicatat kunjungan.</p>';
-    html += '</div>';
+    html += '<div class="insight-card warn"><div class="title">📍 Belum Dikunjungi</div>';
+    html += '<p><b>' + a.belum.length + '</b> nasabah belum pernah dicatat kunjungan.</p></div>';
   }
   if(a.risky.length){
     html += '<hr><div class="dim" style="margin-bottom:6px"><b>⚠️ Top Nasabah Risiko Tinggi</b></div>';
     a.risky.slice(0, 8).forEach(x => {
-      const p = x.p;
-      const m = p.master || {};
+      const p = x.p; const m = p.master || {};
       html += '<div class="res-card" data-nama="' + esc(p.nama) + '">' +
         '<div class="rc-top"><div class="rc-name">' + esc(p.nama) + '</div>' +
         '<div class="rc-rek nums">Skor ' + x.score + '</div></div>' +
@@ -2221,23 +2238,10 @@ function answerAnalisa(){
       '</div>';
     });
   }
-  const aoEntries = Object.entries(a.aoStat).sort((x,y) => y[1].total - x[1].total);
-  if(aoEntries.length){
-    html += '<hr><div class="dim" style="margin-bottom:6px"><b>👥 Kinerja AO</b></div>';
-    html += '<dl class="kv">';
-    aoEntries.slice(0, 8).forEach(([ao, v]) => {
-      html += '<dt>' + esc(ao) + '</dt><dd class="nums">' + v.total + ' aksi';
-      if(v.bayar) html += ' · <span style="color:#1f7a45">' + v.bayar + ' bayar</span>';
-      if(v.janji) html += ' · <span style="color:#b5842a">' + v.janji + ' janji</span>';
-      html += '</dd>';
-    });
-    html += '</dl>';
-  }
-  html += '<div class="dim" style="margin-top:10px">💡 Tanya lanjutan: <code>analisa risiko Ahmad</code> atau <code>siapa yang perlu dikunjungi minggu ini?</code></div>';
   return html;
 }
 
-/* ------------------------- 11. DISPATCHER ------------------------- */
+/* ------------------------- 14. DISPATCHER ------------------------- */
 function buildLocalAnswer(text){
   const intent = detectIntent(text);
   const nameCand = extractNameCandidate(text);
@@ -2270,22 +2274,12 @@ function focusAnswer(intent, p, text){
     case 'janji': return answerJanjiOrang(p);
     case 'riwayat': return answerRiwayatOrang(p);
     case 'belum': return answerBelumOrang(p);
-    case 'foto': {
-      const tl = allTimeline(p).filter(v => v.fotos && v.fotos.length);
-      if(!tl.length) return '<h3>📷 Foto — ' + esc(p.nama) + '</h3><hr><div class="empty-note">Belum ada foto kunjungan untuk nasabah ini.</div>';
-      let html = '<h3>📷 Foto — ' + esc(p.nama) + '</h3><div class="dim">' + tl.length + ' kunjungan punya foto.</div><hr>';
-      tl.forEach(v => {
-        html += '<div class="photo-block"><div class="pb-head"><b>' + esc(fmtTgl(v.tanggal)) + '</b>' +
-          (v.ao ? ' · ' + esc(v.ao) : '') + (v.hasil ? '<br>' + esc(v.hasil) : '') + '</div>' +
-          renderFotoStrip(v.fotos, true) + '</div>';
-      });
-      return html;
-    }
+    case 'foto': return answerFoto(text);
     default: return fullProfileHtml(p);
   }
 }
 
-/* ------------------------- 12. KONTEKS LLM ------------------------- */
+/* ------------------------- 15. KONTEKS LLM ------------------------- */
 function buildContext(text){
   const intent = detectIntent(text);
   const parts = [];
@@ -2294,9 +2288,7 @@ function buildContext(text){
   const cand = extractNameCandidate(text);
   const found = cand ? searchProfiles(cand, 10) : [];
   const focusPerson = (found.length && cand && scoreMatch(cand, found[0].nama) >= 55) ? found[0] : null;
-  if(focusPerson){
-    parts.push('PERMINTAAN FOKUS: Pengguna menanyakan SATU nasabah spesifik yaitu "' + focusPerson.nama + '". Jawab HANYA tentang orang ini.');
-  }
+  if(focusPerson) parts.push('PERMINTAAN FOKUS: nasabah "' + focusPerson.nama + '". Jawab HANYA tentang orang ini.');
   if(found.length){
     parts.push('\n== NASABAH TERKAIT ==');
     found.forEach(p => {
@@ -2309,13 +2301,12 @@ function buildContext(text){
         ' | plafon: ' + num(m.plafon) + ' | outstanding: ' + num(m.saldo) +
         ' | angsuran: ' + num(m.angsuran_bulanan) +
         ' | setoran_pokok: ' + num(m.pembayaran_pokok) +
-        ' | setoran_margin: ' + num(m.pembayaran_margin) +
         ' | sudah_angsur: ' + (m.sudah_angsur === true ? 'YA' : 'BELUM') +
         ' | coll: ' + (m.coll !== undefined && m.coll !== null && m.coll !== '' ? m.coll : '-') +
         ' | jumlah kunjungan: ' + (p.visits.length + p.reports.length));
       allTimeline(p).slice(0, 30).forEach(v => {
         const nFoto = (v.fotos && v.fotos.length) ? (' | ' + v.fotos.length + ' foto') : '';
-        const nLok = (v.lokasi && v.lokasi.lat) ? ' | ada GPS' : '';
+        const nLok = (v.lokasi && v.lokasi.lat) ? ' | GPS' : '';
         parts.push('    * ' + (v.tanggal || '-') + ' | ' + (v.status || 'Kunjungan') + ' | ' +
           (v.hasil || '').replace(/\s+/g,' ').slice(0, 200) + ' | AO: ' + (v.ao || '-') + nFoto + nLok);
       });
@@ -2323,56 +2314,46 @@ function buildContext(text){
   }
   const range = extractDateRange(text);
   if(range){
-    parts.push('\n== KUNJUNGAN ' + range.label.toUpperCase() + ' (' + range.from + ' s/d ' + range.to + ') ==');
+    parts.push('\n== KUNJUNGAN ' + range.label.toUpperCase() + ' ==');
     const rows = DB.marketing.filter(r => r.tanggal >= range.from && r.tanggal <= range.to).slice(0, 100);
-    rows.forEach(r => parts.push('- ' + r.tanggal + ' | ' + r.debitur + ' | ' + r.status + ' | AO: ' + r.ao + ' | ' + (r.hasil || '').slice(0,120)));
+    rows.forEach(r => parts.push('- ' + r.tanggal + ' | ' + r.debitur + ' | ' + r.status + ' | AO: ' + r.ao));
     if(!rows.length) parts.push('(tidak ada)');
   }
   if(intent === 'angsuran' && !focusPerson){
-    parts.push('\n== ANGSURAN / SUDAH BAYAR ==');
+    parts.push('\n== ANGSURAN ==');
     const rangeA = extractDateRange(text);
     if(rangeA){
-      parts.push('Periode: ' + rangeA.label);
       const rows = DB.marketing.filter(r => r.status === 'Sudah Bayar' && r.tanggal >= rangeA.from && r.tanggal <= rangeA.to);
-      rows.forEach(r => parts.push('- ' + r.debitur + ' | ' + r.tanggal + ' | AO: ' + r.ao + ' | ' + (r.hasil || '').slice(0,120)));
+      rows.forEach(r => parts.push('- ' + r.debitur + ' | ' + r.tanggal + ' | AO: ' + r.ao));
     }
-    parts.push('\nDari master (pembayaran bulan berjalan):');
-    PROFILES.filter(p => p.master && (num(p.master.pembayaran_pokok) > 0 || num(p.master.pembayaran_margin) > 0))
+    parts.push('\nDari master (pokok > 0):');
+    PROFILES.filter(p => p.master && num(p.master.pembayaran_pokok) > 0)
       .slice(0, 50)
-      .forEach(p => parts.push('- ' + p.nama + ' | pokok: ' + num(p.master.pembayaran_pokok) + ' | margin: ' + num(p.master.pembayaran_margin) + ' | AO: ' + (p.ao || '-')));
+      .forEach(p => parts.push('- ' + p.nama + ' | pokok: ' + num(p.master.pembayaran_pokok) + ' | AO: ' + (p.ao || '-')));
   }
   if(intent === 'tunggakan'){
     parts.push('\n== OUTSTANDING TERBESAR ==');
     PROFILES.filter(p => p.master && num(p.master.saldo) > 0)
       .sort((a,b) => num(b.master.saldo) - num(a.master.saldo)).slice(0, 50)
-      .forEach(p => parts.push('- ' + p.nama + ' | ' + fmtRpFull(p.master.saldo) + ' | AO: ' + (p.ao || '-') + ' | coll: ' + (p.master.coll ?? '-')));
+      .forEach(p => parts.push('- ' + p.nama + ' | ' + fmtRpFull(p.master.saldo) + ' | coll: ' + (p.master.coll ?? '-')));
   }
   if(intent === 'belum'){
     const list = PROFILES.filter(p => p.master && !p.visits.length && !p.reports.length);
-    parts.push('\n== BELUM DIKUNJUNGI (' + list.length + ' nasabah) ==');
-    list.slice(0, 60).forEach(p => parts.push('- ' + p.nama + ' | AO: ' + (p.ao || '-') + ' | ' + (p.alamat || '-')));
+    parts.push('\n== BELUM DIKUNJUNGI (' + list.length + ') ==');
+    list.slice(0, 60).forEach(p => parts.push('- ' + p.nama + ' | AO: ' + (p.ao || '-')));
   }
   if(intent === 'janji'){
     parts.push('\n== JANJI BAYAR ==');
     DB.marketing.filter(r => r.status === 'Janji Bayar').slice(0, 30)
-      .forEach(r => parts.push('- ' + r.debitur + ' | target: ' + (r.target || '-') + ' | dicatat: ' + r.tanggal + ' | AO: ' + r.ao));
-  }
-  if(intent === 'foto'){
-    parts.push('\n== FOTO ==');
-    const cand2 = extractNameCandidate(text);
-    const list = cand2 ? searchProfiles(cand2, 3) : [];
-    list.forEach(p => {
-      const f = allTimeline(p).filter(v => v.fotos && v.fotos.length);
-      parts.push('- ' + p.nama + ': ' + f.length + ' kunjungan dengan foto');
-    });
+      .forEach(r => parts.push('- ' + r.debitur + ' | target: ' + (r.target || '-') + ' | AO: ' + r.ao));
   }
   parts.push('\n== RINGKASAN GLOBAL ==');
-  parts.push('⚠️ TOTAL NASABAH RESMI: ' + getEffectiveMaster().length + ' — dari ' + masterSourceLabel());
-  parts.push('Profil gabungan: ' + PROFILES.length);
-  parts.push('Total kunjungan Buku Kunjungan: ' + PROFILES.reduce((s,p) => s + p.visits.length, 0));
+  parts.push('⚠️ TOTAL REKENING RESMI: ' + getEffectiveMaster().length + ' (dari ' + masterSourceLabel() + ')');
+  parts.push('Total orang (setelah merge multi-rekening): ' + PROFILES.length);
+  parts.push('Total kunjungan: ' + PROFILES.reduce((s,p) => s + p.visits.length, 0));
   parts.push('Total Laporan Marketing: ' + DB.marketing.length);
   parts.push('Total outstanding: ' + fmtRpFull(PROFILES.reduce((s,p) => s + (p.master ? num(p.master.saldo) : 0), 0)));
-  parts.push('Jumlah AO: ' + AO_LIST.length + ' (' + AO_LIST.join(', ') + ')');
+  parts.push('Jumlah AO: ' + AO_LIST.length);
   let ctx = parts.join('\n');
   if(ctx.length > 60000) ctx = ctx.slice(0, 60000) + '\n…(dipotong)';
   return ctx;
@@ -2386,7 +2367,7 @@ function getSettings(){
 }
 function saveSettings(s){ localStorage.setItem('tanyakopena_settings', JSON.stringify(s)); }
 
-/* ------------------------- 13. INGATAN CHAT ------------------------- */
+/* ------------------------- 16. INGATAN CHAT ------------------------- */
 const HIST_KEY = 'tanyakopena_chat_v1';
 const HIST_MAX_STORED = 60;
 const HIST_MAX_SENT = 14;
@@ -2438,52 +2419,38 @@ function buildSystemPrompt(){
   const corrections = buildCorrectionsPrompt();
   return 'Kamu adalah "Tanya KOPENA", asisten data + analis untuk Koperasi KOPENA Limpung (koperasi simpan pinjam syariah). ' +
     'Kamu hafal data nasabah, enak diajak ngobrol, DAN bisa menganalisis data.\n\n' +
-
     'GAYA BICARA:\n' +
     '- Santai dan hangat. Pakai "kamu" untuk pengguna, "aku" untuk dirimu.\n' +
-    '- Ikuti panjang-nada pengguna: pertanyaan singkat dijawab singkat, pertanyaan rinci dijawab rinci.\n' +
-    '- Jangan kaku seperti laporan resmi. Hindari "berikut adalah", "adapun", "sebagaimana".\n' +
-    '- Emoji boleh sesekali (max 1 per jawaban).\n' +
-    '- Sapaan/terima kasih/obrolan ringan dibalas pendek, tanpa menyodorkan data.\n\n' +
-
-    'CARA BERPIKIR (lakukan di kepalamu, jangan tuliskan):\n' +
-    '1. Apa sebenarnya yang ditanya?\n' +
-    '2. Data apa yang tersedia?\n' +
-    '3. Apakah ada nasabah spesifik yang dimaksud?\n' +
-    '4. Apakah ada konteks dari percakapan sebelumnya?\n' +
-    '5. Apakah ada ATURAN BISNIS yang relevan?\n' +
-    '6. Baru tulis jawaban.\n\n' +
-
+    '- Ikuti panjang-nada pengguna.\n' +
+    '- Jangan kaku. Hindari "berikut adalah", "adapun", "sebagaimana".\n' +
+    '- Emoji boleh sesekali (max 1 per jawaban).\n\n' +
+    'CARA BERPIKIR (di kepalamu):\n' +
+    '1. Apa yang ditanya?\n2. Data apa yang tersedia?\n3. Ada nasabah spesifik?\n4. Ada konteks sebelumnya?\n5. Ada ATURAN BISNIS yang relevan?\n6. Baru tulis jawaban.\n\n' +
     'CARA MENJAWAB:\n' +
-    '1. Kalau ditanya 1 nasabah spesifik → JAWAB HANYA tentang orang itu.\n' +
-    '2. Kalau ditanya daftar → beri ringkasan 1-2 kalimat dulu, baru daftar.\n' +
-    '3. Kalau ditanya "analisa", "menurutmu", "gimana kondisi" → beri analisis mendalam:\n' +
-    '   • Kesimpulan utama\n   • Temuan penting (3-5 poin)\n   • Anomali (kalau ada)\n   • Rekomendasi aksi konkret\n' +
-    '4. Kalau data tidak ada → bilang jujur dengan santai.\n' +
-    '5. Kalau pengguna bilang "dia", "yang tadi" → rujuk nasabah terakhir.\n' +
-    '6. Kalau pengguna tanya foto → bilang "aku tampilkan fotonya di bawah" (sistem akan tampilkan otomatis).\n\n' +
-
+    '1. Kalau 1 nasabah spesifik → JAWAB HANYA tentang orang itu.\n' +
+    '2. Kalau daftar → beri ringkasan 1-2 kalimat dulu, baru daftar.\n' +
+    '3. Kalau ditanya analisis → kesimpulan + temuan + rekomendasi aksi.\n' +
+    '4. Kalau data tidak ada → bilang jujur santai.\n' +
+    '5. Kalau "dia"/"yang tadi" → rujuk nasabah terakhir.\n' +
+    '6. Kalau tanya foto → bilang "aku tampilkan fotonya di bawah".\n\n' +
     'TENTANG REKENING:\n' +
     '- Awalan 211 = rekening sukarela = ID resmi nasabah.\n' +
-    '- Awalan 541/542/543/544/551/111 = rekening pinjaman.\n' +
-    '- Nomor pinjaman lebih besar = lebih baru. Pinjaman aktif = nomor terbesar.\n\n' +
-
+    '- Awalan 541/542/543/544/551/111 = rekening pinjaman (bisa >1).\n' +
+    '- Nomor pinjaman lebih besar = lebih baru.\n' +
+    '- Satu orang bisa punya >1 pinjaman.\n\n' +
     'TENTANG SUMBER DATA:\n' +
-    '- Master (upload atau Sheets) = data resmi.\n' +
-    '- Firebase = kunjungan & laporan marketing (pelengkap).\n' +
-    '- Kalau konflik, master menang.\n\n' +
-
-    'ATURAN BISNIS KANTOR (WAJIB DIPATUHI):\n' + (rules || '(belum ada)') + '\n\n' +
-
-    'FORMAT ANGKA: Rp 1.234.567 (pemisah titik).\n\n' +
-
+    '- Master (URL/upload/Sheets) = data resmi.\n' +
+    '- Firebase = kunjungan & laporan marketing.\n' +
+    '- Kalau konflik, master menang.\n' +
+    '- Kalau user upload/ganti URL → otomatis ganti master lama.\n\n' +
+    'ATURAN BISNIS KANTOR:\n' + (rules || '(belum ada)') + '\n\n' +
+    'FORMAT ANGKA: Rp 1.234.567\n\n' +
     'ATURAN DATA:\n' +
     '- Jawab HANYA dari DATA. Jangan ngarang.\n' +
-    '- Kalau menyebut nasabah, sebut rekening atau AO-nya.\n' +
+    '- Sebut rekening atau AO saat menyebut nasabah.\n' +
     '- Kalau ada foto/GPS, sebutkan.\n' +
-    '- Kalau ditanya ANGSURAN: bedakan Laporan Marketing (tanggal pasti) dan Master (tanpa tanggal).\n\n' +
-
-    (examples ? 'CONTOH PERCAKAPAN (tirukan gaya ini):\n' + examples + '\n\n' : '') +
+    '- ANGSURAN: bedakan Laporan Marketing (tanggal pasti) dan Master (tanpa tanggal).\n\n' +
+    (examples ? 'CONTOH PERCAKAPAN:\n' + examples + '\n\n' : '') +
     (corrections || '');
 }
 
@@ -2494,10 +2461,7 @@ async function askLLM(question, context, history, mode){
   const cfg = loadAnalysisCfg();
   let systemPrompt = buildSystemPrompt();
   if(mode === 'analysis' || cfg.analysisOn){
-    systemPrompt += '\n\nMODE ANALISIS AKTIF:\n' +
-      'Setelah jawaban utama, tambahkan bagian "📊 Analisis Singkat" berisi:\n' +
-      '- 1-2 temuan penting\n- Rekomendasi aksi konkret\n' +
-      'Jangan lebih dari 4 poin. Padat, hindari basa-basi.';
+    systemPrompt += '\n\nMODE ANALISIS AKTIF:\nSetelah jawaban utama, tambahkan "📊 Analisis Singkat" (max 4 poin).';
   }
   const msgs = [{ role: 'system', content: systemPrompt }];
   (history || []).forEach(m => {
@@ -2543,7 +2507,7 @@ function miniMarkdown(text){
   return out || '<p></p>';
 }
 
-/* ------------------------- 14. UI CHAT ------------------------- */
+/* ------------------------- 17. UI CHAT ------------------------- */
 const chatEl = $('#chat');
 const chipsEl = $('#chips');
 const inputEl = $('#q');
@@ -2644,33 +2608,19 @@ async function ask(text){
       } catch(err){
         console.warn('LLM gagal', err);
         llmFailed = true;
-        html = '<div class="err-box">AI tidak bisa dihubungi (' + esc(err.message) + '). Berikut hasil pencarian langsung:</div>';
+        html = '<div class="err-box">AI tidak bisa dihubungi (' + esc(err.message) + '). Hasil pencarian langsung:</div>';
       }
     }
-
-    // === FIX FOTO: selalu cek & tambahkan foto yang relevan ===
     const localAns = buildLocalAnswer(q);
     const photoHtml = buildPhotoSection(q);
-
     if(fromLLM && !llmFailed){
-      // Jawaban utama sudah dari LLM
-      // Tambahkan foto (selalu, kalau ada)
       if(photoHtml) html += photoHtml;
-      // Kalau local answer punya res-card tapi belum ada di html, tambahkan
       if(localAns.indexOf('res-card') >= 0 && html.indexOf('res-card') < 0 && !photoHtml){
         html += '<hr><div class="dim">Data pendukung:</div>' + localAns;
       }
     } else {
-      // Pakai jawaban lokal sebagai utama
       html = localAns;
-      // Tambahkan foto kalau belum ada di local answer
-      if(photoHtml && html.indexOf('foto-strip') < 0){
-        html += photoHtml;
-      } else if(photoHtml && html.indexOf('foto-strip') >= 0){
-        // Local answer sudah punya foto, tidak perlu tambah lagi
-      } else if(!photoHtml && !html) {
-        // nothing
-      }
+      if(photoHtml && html.indexOf('foto-strip') < 0) html += photoHtml;
     }
   } catch(err){
     console.error(err);
@@ -2698,7 +2648,6 @@ async function ask(text){
 }
 
 chatEl.addEventListener('click', e => {
-  // Feedback buttons
   const fbBtn = e.target.closest('[data-feedback]');
   if(fbBtn){
     const msgEl = fbBtn.closest('.msg');
@@ -2712,12 +2661,7 @@ chatEl.addEventListener('click', e => {
     }
     const q = msgEl.dataset.userQuestion || prompt('Pertanyaan pengguna:') || '';
     const wrongAnswer = msgEl.dataset.llmAnswer || '';
-    const right = prompt(
-      'Jawaban yang seharusnya (koreksi):\n\n' +
-      'Pertanyaan: ' + q + '\n' +
-      'Jawaban AI: ' + wrongAnswer.slice(0, 200) + '\n\n' +
-      'Tulis jawaban yang benar:'
-    );
+    const right = prompt('Koreksi jawaban:\n\nQ: ' + q + '\nJawaban AI: ' + wrongAnswer.slice(0, 200) + '\n\nTulis jawaban benar:');
     if(!right || !right.trim()) return;
     addCorrection(q, wrongAnswer, right.trim());
     msgEl.querySelectorAll('.feedback-btn').forEach(b => { b.disabled = true; b.style.opacity = .5; });
@@ -2725,29 +2669,26 @@ chatEl.addEventListener('click', e => {
     fbBtn.classList.add('done');
     return;
   }
-
   const btn = e.target.closest('[data-open]');
   if(btn){ openDetail(btn.dataset.open); return; }
   const card = e.target.closest('.res-card');
   if(card && card.dataset.nama){ openDetail(card.dataset.nama); }
 });
 
-/* ------------------------- 15. DETAIL ------------------------- */
+/* ------------------------- 18. DETAIL ------------------------- */
 function openDetail(keyOrNama){
   let p = BY_NAME.get(normNama(keyOrNama));
   if(!p){ const found = searchProfiles(keyOrNama, 1); p = found[0]; }
   if(!p) return;
   const m = p.master || {};
   const coll = (m.coll !== undefined && m.coll !== null && m.coll !== '') ? num(m.coll) : null;
-
   let html = '<div class="d-head">' +
     '<button class="close" data-close="detailOverlay">✕</button>' +
     '<h2>' + esc(p.nama) + '</h2>' +
-    '<p>' + esc(p.reks.join(' · ') || 'tanpa nomor rekening') + '</p>' +
+    '<p>' + esc(p.reks.join(' · ') || 'tanpa rekening') + '</p>' +
   '</div>';
-
   html += '<div class="d-sec"><h3>Ringkasan</h3><div class="d-grid">';
-  html += '<div class="d-field full"><span class="l">AO / Petugas</span><span class="v sm">' + esc(p.ao || '-') + '</span></div>';
+  html += '<div class="d-field full"><span class="l">AO</span><span class="v sm">' + esc(p.ao || '-') + '</span></div>';
   if(p.norek) html += '<div class="d-field"><span class="l">Rek. Sukarela (211)</span><span class="v nums">' + esc(p.norek) + '</span></div>';
   if(p.pinjamanAktif && p.pinjamanAktif !== p.norek) html += '<div class="d-field"><span class="l">Pinjaman Aktif</span><span class="v nums">' + esc(p.pinjamanAktif) + '</span></div>';
   if(p.alamat) html += '<div class="d-field full"><span class="l">Alamat</span><span class="v sm">' + esc(p.alamat) + '</span></div>';
@@ -2759,14 +2700,12 @@ function openDetail(keyOrNama){
   if(m.tgl_jatuh_tempo) html += '<div class="d-field"><span class="l">Jatuh tempo</span><span class="v sm nums">' + esc(m.tgl_jatuh_tempo) + '</span></div>';
   if(p.reks.length > 1) html += '<div class="d-field full"><span class="l">Semua Rekening</span><span class="v sm nums">' + esc(p.reks.join(' · ')) + '</span></div>';
   html += '</div></div>';
-
   const wa = waLink(p.wa, p.nama);
   const mp = mapsUrl(p.alamat);
   html += '<div class="d-sec" style="display:flex;gap:8px;flex-wrap:wrap">';
   if(wa) html += '<a href="' + wa + '" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none;background:#25a244;color:#fff;padding:11px;border-radius:12px;font-weight:700;font-size:14px">💬 WhatsApp</a>';
   if(mp) html += '<a href="' + mp + '" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none;background:#eaf3fb;color:#1f6fbf;padding:11px;border-radius:12px;font-weight:700;font-size:14px">🗺️ Peta</a>';
   html += '</div>';
-
   const tl = allTimeline(p);
   html += '<div class="d-sec"><h3>Riwayat kunjungan (' + tl.length + ')</h3>';
   if(!tl.length){
@@ -2788,39 +2727,40 @@ function openDetail(keyOrNama){
     html += '</div>';
   }
   html += '</div><div style="height:20px"></div>';
-
   $('#detailSheet').innerHTML = html;
   $('#detailOverlay').classList.add('show');
 }
 
-/* ------------------------- 16. PENGATURAN ------------------------- */
+/* ------------------------- 19. PENGATURAN ------------------------- */
 function refreshUploadInfo(){
   const box = $('#uploadInfoBox');
   if(!box) return;
   if(!DB.uploaded){
-    box.innerHTML = '<div class="hint">Belum ada file diupload. Klik 📎 di chat untuk upload Excel/CSV/XML/PDF.</div>';
+    box.innerHTML = '<div class="hint">Belum ada data upload/URL aktif.</div>';
     return;
   }
   const tgl = new Date(DB.uploaded.uploadedAt).toLocaleString('id-ID');
+  const src = DB.uploaded.sourceUrl ? '🌐 URL' : '📎 Upload';
   box.innerHTML =
     '<div class="upload-info">' +
-      '<b>📎 ' + esc(DB.uploaded.filename) + '</b><br>' +
-      DB.uploaded.count + ' baris · diupload ' + esc(tgl) +
+      '<b>' + src + ' · ' + esc(DB.uploaded.filename) + '</b><br>' +
+      DB.uploaded.count + ' baris · ' + esc(tgl) +
+      (DB.uploaded.sourceUrl ? '<br><small>' + esc(DB.uploaded.sourceUrl) + '</small>' : '') +
     '</div>' +
-    '<button class="btn-ghost" id="btnClearUpload" style="color:#c0392b;border-color:#f2c8c1">🗑 Hapus Data Upload</button>';
+    '<button class="btn-ghost" id="btnClearUpload" style="color:#c0392b;border-color:#f2c8c1">🗑 Hapus Data Master Aktif</button>';
   $('#btnClearUpload').addEventListener('click', () => {
-    if(!confirm('Hapus data upload? Data akan kembali ke Google Sheets.')) return;
+    if(!confirm('Hapus data master aktif? Data akan kembali ke Google Sheets.')) return;
     clearUploaded();
     rebuild();
     refreshUploadInfo();
-    $('#settingsMsg').innerHTML = '<div class="ok-box">✓ Data upload dihapus.</div>';
+    $('#settingsMsg').innerHTML = '<div class="ok-box">✓ Data master dihapus.</div>';
   });
 }
 function renderCorrectionsList(){
   const box = $('#correctionsList');
   const list = loadCorrections().slice().reverse();
   if(!list.length){
-    box.innerHTML = '<div class="dim" style="padding:8px">Belum ada koreksi. Klik ❌ di jawaban AI untuk menyimpan koreksi.</div>';
+    box.innerHTML = '<div class="dim" style="padding:8px">Belum ada koreksi.</div>';
     return;
   }
   box.innerHTML = list.map(c =>
@@ -2840,20 +2780,20 @@ function openSettings(){
   $('#setModel').value = st.model || '';
   $('#settingsMsg').innerHTML = '';
   refreshUploadInfo();
-
   $('#setRules').value = loadRules();
   $('#setExamples').value = loadExamples();
   const cfg = loadAnalysisCfg();
   $('#setAnalysisOn').checked = !!cfg.analysisOn;
   $('#setThresholdOs').value = cfg.thresholdOs;
   $('#setThresholdDays').value = cfg.thresholdDays;
-
+  const urlCfg = loadUrlCfg();
+  $('#setUrlMaster').value = urlCfg.masterUrl || '';
+  $('#setUrlInterval').value = urlCfg.intervalMin || 30;
   $$('#settingsTabs button').forEach((b, i) => b.classList.toggle('active', i === 0));
-  ['rules','examples','corrections','analysis'].forEach((t, i) => {
+  ['url','rules','examples','corrections','analysis'].forEach((t, i) => {
     const el = $('#tab' + t.charAt(0).toUpperCase() + t.slice(1));
     if(el) el.style.display = (i === 0) ? '' : 'none';
   });
-
   $('#settingsOverlay').classList.add('show');
 }
 
@@ -2877,20 +2817,36 @@ $('#settingsTabs').addEventListener('click', e => {
   const btn = e.target.closest('button[data-tab]');
   if(!btn) return;
   $$('#settingsTabs button').forEach(b => b.classList.toggle('active', b === btn));
-  ['rules','examples','corrections','analysis'].forEach(t => {
+  ['url','rules','examples','corrections','analysis'].forEach(t => {
     const el = $('#tab' + t.charAt(0).toUpperCase() + t.slice(1));
     if(el) el.style.display = (t === btn.dataset.tab) ? '' : 'none';
   });
   if(btn.dataset.tab === 'corrections') renderCorrectionsList();
 });
 
+$('#btnFetchUrl').addEventListener('click', async () => {
+  const url = $('#setUrlMaster').value.trim();
+  if(!url) { alert('Isi URL dulu.'); return; }
+  try { await fetchMasterFromUrl(url, false); } catch(e){}
+});
+
+$('#btnSaveUrlCfg').addEventListener('click', () => {
+  const cfg = {
+    masterUrl: $('#setUrlMaster').value.trim(),
+    intervalMin: Math.max(5, Number($('#setUrlInterval').value) || 30)
+  };
+  saveUrlCfg(cfg);
+  scheduleUrlRefresh();
+  $('#settingsMsg').innerHTML = '<div class="ok-box">✓ Pengaturan URL disimpan. Auto-refresh tiap ' + cfg.intervalMin + ' menit.</div>';
+});
+
 $('#btnSaveRules').addEventListener('click', () => {
   saveRules($('#setRules').value);
-  $('#settingsMsg').innerHTML = '<div class="ok-box">✓ Aturan bisnis disimpan.</div>';
+  $('#settingsMsg').innerHTML = '<div class="ok-box">✓ Aturan disimpan.</div>';
 });
 $('#btnSaveExamples').addEventListener('click', () => {
   saveExamples($('#setExamples').value);
-  $('#settingsMsg').innerHTML = '<div class="ok-box">✓ Contoh percakapan disimpan.</div>';
+  $('#settingsMsg').innerHTML = '<div class="ok-box">✓ Contoh disimpan.</div>';
 });
 $('#btnSaveAnalysis').addEventListener('click', () => {
   saveAnalysisCfg({
@@ -2907,14 +2863,13 @@ $('#btnClearCorrections').addEventListener('click', () => {
   $('#settingsMsg').innerHTML = '<div class="ok-box">✓ Koreksi dihapus.</div>';
 });
 
-/* ------------------------- 17. OVERLAY & INPUT ------------------------- */
+/* ------------------------- 20. OVERLAY & INPUT ------------------------- */
 $$('[data-close]').forEach(b => {
   b.addEventListener('click', () => $('#' + b.dataset.close).classList.remove('show'));
 });
 $$('.overlay').forEach(ov => {
   ov.addEventListener('click', e => { if(e.target === ov) ov.classList.remove('show'); });
 });
-
 $('#btnSettings').addEventListener('click', openSettings);
 $('#btnClearChat').addEventListener('click', () => {
   if(!confirm('Mulai obrolan baru?')) return;
@@ -2931,20 +2886,17 @@ $('#btnReload').addEventListener('click', () => {
 });
 $('#composer').addEventListener('submit', e => { e.preventDefault(); ask(inputEl.value); });
 
-/* ------------------------- 18. UPLOAD FILE ------------------------- */
+/* ------------------------- 21. UPLOAD FILE ------------------------- */
 $('#btnAttach').addEventListener('click', () => $('#fileInput').click());
-
 $('#fileInput').addEventListener('change', async (e) => {
   const file = e.target.files && e.target.files[0];
   e.target.value = '';
   if(!file) return;
-  if(busy) { alert('Tunggu sampai jawaban sebelumnya selesai.'); return; }
-
+  if(busy) { alert('Tunggu jawaban sebelumnya selesai.'); return; }
   addUserMsg('📎 Kirim file: ' + file.name);
   addTyping();
   busy = true;
   sendBtn.disabled = true;
-
   try {
     const rows = await parseAnyFile(file);
     saveUploaded(rows, file.name);
@@ -2965,7 +2917,7 @@ $('#fileInput').addEventListener('change', async (e) => {
     saveHist();
   } catch(err){
     removeTyping();
-    addAiMsg('<div class="err-box"><b>Gagal memuat file:</b><br>' + esc(err.message) + '</div>');
+    addAiMsg('<div class="err-box"><b>Gagal:</b><br>' + esc(err.message) + '</div>');
     console.warn('Upload error', err);
   } finally {
     busy = false;
@@ -2973,7 +2925,7 @@ $('#fileInput').addEventListener('change', async (e) => {
   }
 });
 
-/* ------------------------- 19. SUARA ------------------------- */
+/* ------------------------- 22. SUARA ------------------------- */
 let recog = null, recording = false;
 const micBtn = $('#btnMic');
 function initSpeech(){
@@ -2992,24 +2944,23 @@ function initSpeech(){
   recog.onerror = () => { recording = false; micBtn.classList.remove('rec'); };
 }
 micBtn.addEventListener('click', () => {
-  if(!recog){ alert('Perangkat ini tidak mendukung input suara.'); return; }
+  if(!recog){ alert('Perangkat tidak mendukung input suara.'); return; }
   if(recording){ recog.stop(); return; }
   try { recog.start(); recording = true; micBtn.classList.add('rec'); }
   catch(e){ recording = false; micBtn.classList.remove('rec'); }
 });
 
-/* ------------------------- 20. START ------------------------- */
+/* ------------------------- 23. START ------------------------- */
 function greet(){
   const jam = new Date().getHours();
   const sapaan = jam < 11 ? 'Pagi' : jam < 15 ? 'Siang' : jam < 18 ? 'Sore' : 'Malam';
   const src = masterSourceLabel();
   addAiMsg(
     '<h3>' + sapaan + '! 👋 Aku Tanya KOPENA</h3>' +
-    '<p>Aku hafal data nasabah dari <b>Buku Kunjungan</b>, <b>Laporan Marketing</b>, dan <b>Data Nasabah</b>. Sumber master: <b>' + esc(src) + '</b>.</p>' +
-    '<div class="dim">📎 Upload file Excel/CSV/XML/PDF di tombol kiri. Coba tanya: <code>riwayat Surip</code>, <code>siapa yang belum dikunjungi?</code>, atau <code>analisa kondisi data kita</code> 😊</div>'
+    '<p>Aku hafal data dari <b>Buku Kunjungan</b>, <b>Laporan Marketing</b>, dan <b>Data Nasabah</b>. Sumber master: <b>' + esc(src) + '</b>.</p>' +
+    '<div class="dim">💡 Buka ⚙ → tab 🌐 Sumber URL untuk ambil data langsung dari web. Coba tanya: <code>riwayat Surip</code>, <code>siapa yang belum dikunjungi?</code>, atau <code>analisa kondisi data kita</code> 😊</div>'
   );
 }
-
 function restoreChat(){
   loadHist();
   if(!CHAT_HIST.length){ greet(); return; }
@@ -3025,6 +2976,7 @@ function restoreChat(){
 }
 
 loadUploaded();
+tryAutoLoadFromUrl();
 listenBK();
 listenMK();
 fetchMaster();
