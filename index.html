@@ -303,9 +303,18 @@ function listenMK(){
     renderAlertBar();
   },err=>{console.warn('MK',err)});
 }
-async function fetchMaster(){
+let lastMasterFetch=0, masterFetching=false;
+async function fetchMaster(force){
+  if(masterFetching)return;
+  // jangan spam: kecuali force, minimal jeda 8 detik
+  if(!force&&lastMasterFetch&&(Date.now()-lastMasterFetch<8000))return;
+  masterFetching=true;
   try{
-    const res=await fetch(SHEET_API_URL+'?key='+encodeURIComponent(SHEET_KEY),{cache:'no-store'});
+    const qs='key='+encodeURIComponent(SHEET_KEY)+'&_ts='+Date.now()+'&_r='+Math.random().toString(36).slice(2,8);
+    const res=await fetch(SHEET_API_URL+'?'+qs,{
+      cache:'no-store',
+      headers:{'Cache-Control':'no-cache, no-store, must-revalidate','Pragma':'no-cache'}
+    });
     if(!res.ok)throw new Error('HTTP '+res.status);
     const txt=await res.text();
     let data;
@@ -321,17 +330,32 @@ async function fetchMaster(){
     DB.master=DB.rawRows.map(normRow).filter(m=>m.nama||m.no_rekening);
     DB.masterErr='';
     DB.ready.master=true;
+    lastMasterFetch=Date.now();
   }catch(e){
     console.warn('Master error',e);
     DB.masterErr=String(e.message||e);
     DB.ready.master=DB.master.length>0;
   }
+  masterFetching=false;
   updateStatus();
+  try{renderAlertBar()}catch(e){}
+}
+async function ensureMasterFresh(){
+  // sebelum menjawab: refresh jika data > 45 detik
+  if(!lastMasterFetch||(Date.now()-lastMasterFetch>45000)){
+    await fetchMaster(true);
+  }
 }
 
 function updateStatus(){
   const parts=[];
-  parts.push(DB.ready.master?('🟢 Master ('+DB.master.length+')'):'🔴 Master');
+  let masterLabel=DB.ready.master?('🟢 Master ('+DB.master.length+')'):'🔴 Master';
+  if(DB.ready.master&&lastMasterFetch){
+    const age=Math.round((Date.now()-lastMasterFetch)/1000);
+    if(age<120)masterLabel+=' · '+age+'d';
+    else masterLabel+=' · '+Math.round(age/60)+'m';
+  }
+  parts.push(masterLabel);
   parts.push(DB.ready.bk?'🟢 Kunjungan':'🔴 Kunjungan');
   parts.push(DB.ready.mk?'🟢 Laporan':'🔴 Laporan');
   const k=getKey();
@@ -1721,6 +1745,7 @@ async function ask(text){
         ?note('Data master gagal dimuat: <b>'+esc(DB.masterErr)+'</b><br>Tekan ⟳ untuk coba lagi.','bad')
         :note('Sedang memuat data dari server… Tunggu sebentar lalu tanya lagi.','warn');
     } else {
+      await ensureMasterFresh();
       html=await answerSmart(text);
     }
   }catch(e){
@@ -1746,11 +1771,12 @@ $('#btnClearChat').addEventListener('click',()=>{
   chatEl.innerHTML='';greet();
 });
 $('#btnReload').addEventListener('click',async()=>{
-  addAiMsg('<div class="dim">Memuat ulang data…</div>');
-  await fetchMaster();
+  addAiMsg('<div class="dim">Memuat ulang data dari TungCab…</div>');
+  lastMasterFetch=0;
+  await fetchMaster(true);
   addAiMsg(DB.masterErr&&!DB.master.length
     ?note('Gagal: '+esc(DB.masterErr),'bad')
-    :note('✓ Data dimuat ulang. '+DB.master.length+' rekening siap.','ok'));
+    :note('✓ Data dimuat ulang dari TungCab. <b>'+DB.master.length+'</b> rekening · '+(lastMasterFetch?new Date(lastMasterFetch).toLocaleTimeString('id-ID'):'')+' ','ok'));
 });
 
 $('#btnKey').addEventListener('click',async()=>{
@@ -1835,7 +1861,7 @@ renderAlertBar();
 setTimeout(renderAlertBar,2000);
 setTimeout(renderAlertBar,6000);
 setInterval(updateStatus,5000);
-setInterval(fetchMaster,5*60*1000);
+setInterval(()=>fetchMaster(true),60*1000);
 setInterval(renderAlertBar,60*1000);
 // alert bar: dismiss / klik buka detail
 document.addEventListener('click',e=>{
